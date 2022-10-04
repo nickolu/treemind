@@ -19,6 +19,7 @@ To Do:
 - [ ] delete confirmation
 - [ ] floating tree (multiple roots)
 - [ ] keyboard bindings
+- [ ] notes view
 
 Done: 
 
