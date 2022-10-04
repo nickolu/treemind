@@ -18,6 +18,7 @@ To Do:
 - [ ] node flags
 - [ ] delete confirmation
 - [ ] floating tree (multiple roots)
+- [ ] keyboard bindings
 
 Done: 
 
