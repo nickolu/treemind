@@ -1,0 +1,26 @@
+{
+    "folders": [
+        {
+            "path": "."
+        }
+    ],
+    "settings": {
+        "editor.formatOnSave": true,
+        "html.format.indentHandlebars": true,
+        "workbench.colorCustomizations": {
+            "activityBar.background": "#FFFFFF",
+            "activityBar.foreground": "#000000",
+            "titleBar.activeBackground": "#FFFFFF",
+            "titleBar.activeForeground": "#000000"
+        },
+        "[javascript]": {
+            "editor.defaultFormatter": "esbenp.prettier-vscode",
+        },
+        "[javascriptreact]": {
+            "editor.defaultFormatter": "esbenp.prettier-vscode"
+        },
+        "prettier.prettierPath": "${workspaceFolder}/node_modules/.bin/prettier",
+        "javascript.validate.enable": false,
+       
+    }
+}
