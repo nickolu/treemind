@@ -24,9 +24,9 @@
     "web-vitals": "^2.1.4"
   },
   "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test",
+    "start": "craco start",
+    "build": "craco build",
+    "test": "craco test",
     "eject": "react-scripts eject"
   },
   "eslintConfig": {
@@ -51,6 +51,7 @@
   "author": "Nick Cunningham <nick.cunningham@leadcrunch.ai>",
   "license": "MIT",
   "devDependencies": {
+    "@craco/craco": "^7.1.0",
     "@types/uuid": "^8.3.4",
     "typescript": "^4.8.4"
   }
