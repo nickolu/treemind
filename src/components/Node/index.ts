@@ -21,7 +21,6 @@ export default class Node {
   id: string;
   parentId: string | null;
   children: Node[];
-  content: ReactNode;
   htmlContent: string;
 
   constructor({id, children, parentId, htmlContent}: NodeJson) {
@@ -35,5 +34,11 @@ export default class Node {
     if (this.children.every((node) => node.id !== child.id)) {
       this.children.push(child);
     }
+  }
+
+  get textContent() {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(this.htmlContent, 'text/html');
+    return doc.body.textContent || '';
   }
 }

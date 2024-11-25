@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react';
+import { memo, useCallback, useEffect } from 'react';
 import ReactFlow, {
   Node,
   Edge,
@@ -9,8 +9,11 @@ import ReactFlow, {
   ConnectionMode,
   Position,
   NodeProps,
+  Handle,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
+import useTreeContext from '../Tree/useTreeContext';
+import MindMapNode from '../Node/MindMapNode';
 
 interface MindMapNodeData {
   id: string;
@@ -55,6 +58,9 @@ const transformTreeToFlow = (
         source: node.id,
         target: child.id,
         type: 'smoothstep',
+        sourceHandle: 'right',
+        targetHandle: 'left',
+        style: { stroke: '#333' }
       });
 
       transformTreeToFlow(
@@ -73,7 +79,8 @@ const transformTreeToFlow = (
   return { nodes, edges };
 };
 
-const MindMapNode = ({ data }: NodeProps) => {
+const ReactFlowMindMapNode = ({ data }: NodeProps) => {
+  const treeService = useTreeContext();
   return (
     <div
       style={{
@@ -83,23 +90,35 @@ const MindMapNode = ({ data }: NodeProps) => {
         padding: '10px',
         width: nodeWidth,
         minHeight: nodeHeight,
-        position: 'relative',
       }}
     >
-      <div className="react-flow__handle react-flow__handle-left" style={{ left: -8, top: '50%', position: 'absolute' }} data-handleid="left" />
-      <div className="react-flow__handle react-flow__handle-right" style={{ right: -8, top: '50%', position: 'absolute' }} data-handleid="right" />
+      <Handle
+        type="target"
+        position={Position.Left}
+        id="left"
+        style={{ background: '#555' }}
+      />
+      <MindMapNode treeService={treeService} node={data} />
+      <Handle
+        type="source"
+        position={Position.Right}
+        id="right"
+        style={{ background: '#555' }}
+      />
       
-      <div dangerouslySetInnerHTML={{ __html: data.htmlContent }} />
     </div>
   );
 };
 
 const nodeTypes = {
-  mindMapNode: MindMapNode,
+  mindMapNode: memo(ReactFlowMindMapNode),
 };
+
+
 
 export default function ReactFlowMindMap({ treeData }: ReactFlowMindMapProps) {
   const { nodes: initialNodes, edges: initialEdges } = transformTreeToFlow(treeData);
+  
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
@@ -111,27 +130,28 @@ export default function ReactFlowMindMap({ treeData }: ReactFlowMindMapProps) {
     setEdges(newEdges);
   }, [stringifiedTreeData, setNodes, setEdges, treeData]);
 
-  const onInit = useCallback(() => {
-    console.log('Flow initialized');
-  }, []);
-    
+  const onInit = useCallback(() => null, []);
 
-
-  return (
-    <div style={{ width: '100%', height: '800px' }}>
-      <ReactFlow
-        nodes={nodes}
-        edges={edges}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        onInit={onInit}
-        nodeTypes={nodeTypes}
-        connectionMode={ConnectionMode.Strict}
-        fitView
-      >
-        <Background />
-        <Controls />
-      </ReactFlow>
-    </div>
+  return (    
+      <div style={{ width: '100%', height: '600px', border: '1px solid #ddd' }}>
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          onInit={onInit}
+          nodeTypes={nodeTypes}
+          fitView
+          defaultEdgeOptions={{
+            type: 'smoothstep',
+            animated: false,
+            style: { stroke: '#333', strokeWidth: 2 }
+          }}
+          connectionMode={ConnectionMode.Strict}
+        >
+          <Background />
+          <Controls />
+        </ReactFlow>
+      </div>
   );
-} 
+}

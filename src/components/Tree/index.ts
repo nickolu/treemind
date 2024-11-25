@@ -42,7 +42,7 @@ export default class Tree {
     return resolvedNode;
   }
 
-  deleteNode(id: string) {
+  deleteChild(id: string) {
     const node = this.findNodeById(id);
     if (node) {
       const nodeParent = this.findNodeById(node.parentId ?? '');
@@ -50,8 +50,10 @@ export default class Tree {
         const nodeIndex = nodeParent.children.findIndex(
           (node: Node) => node.id === id
         );
-
-        nodeParent.children.splice(nodeIndex);
+        
+        if (nodeIndex !== -1) {
+          nodeParent.children.splice(nodeIndex, 1); 
+        }
       }
     }
   }

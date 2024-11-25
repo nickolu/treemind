@@ -15,10 +15,9 @@ function nodeHtml(children: string) {
 export default function D3MindMap({ treeData }) {
   const svgRef = useRef(null);
 
-  console.log('Component rendering with treeData:', treeData);
+  
   const stringifiedTreeData = JSON.stringify(treeData);
   useEffect(() => {
-    console.log('Effect running with treeData:', treeData);
     if (!svgRef.current) return;
 
     // Clear any existing SVG content more thoroughly
