@@ -7,28 +7,20 @@ import ReactFlow, {
   useNodesState,
   useEdgesState,
   ConnectionMode,
-  Position,
-  NodeProps,
-  Handle,
+
 } from 'reactflow';
 import 'reactflow/dist/style.css';
-import { Box } from '@mui/material';
+import ReactFlowMindMapNode from './ReactFlowMindMapNode';
 import useTreeServiceContext from '@/components/Tree/useTreeServiceContext';
-import MindMapNode from '@/components/Node/MindMapNode';
-
-interface MindMapNodeData {
-  id: string;
-  htmlContent: string;
-  children?: MindMapNodeData[];
-}
+import useMindMapStateContext from '@/components/MindMap/useMindMapStateContext';
+import { TreeNode } from '@/components/TreeNode';
 
 interface ReactFlowMindMapProps {
-  treeData: MindMapNodeData;
+  treeData: TreeNode;
 }
 
-
 const transformTreeToFlow = (
-  node: MindMapNodeData,
+  node: TreeNode,
   parentX = 0,
   parentY = 0,
   level = 0,
@@ -78,39 +70,54 @@ const transformTreeToFlow = (
   return { nodes, edges };
 };
 
-const ReactFlowMindMapNode = ({ data }: NodeProps) => {
-  const treeService = useTreeServiceContext();
-  return (
-    <Box
-      sx={{
-        background: 'white',
-        border: '1px solid #ccc',
-        borderRadius: '5px',
-        padding: '10px',
-        width: 150,
-        minHeight: 50,
-      }}
-    >
-      <Handle
-        type="target"
-        position={Position.Left}
-        id="left"
-        style={{ background: '#555' }}
-      />
-      <MindMapNode treeService={treeService} node={data} />
-      <Handle
-        type="source"
-        position={Position.Right}
-        id="right"
-        style={{ background: '#555' }}
-      />
-    </Box>
-  );
-};
-
 const nodeTypes = {
   mindMapNode: memo(ReactFlowMindMapNode),
 };
+
+function useMindMapKeyboardEvents() {
+  const treeService = useTreeServiceContext();
+  const { selectedNodeId, setSelectedNodeId, isNodeBeingEdited, setIsNodeBeingEdited } = useMindMapStateContext();
+  const selectedNode = treeService.getNodeById(selectedNodeId ?? '');
+  const selectedParentNodeId = selectedNode?.parentId ?? treeService.tree.root.id;
+
+  useEffect(() => {
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Tab') {
+        e.preventDefault();
+
+        if (isNodeBeingEdited || !selectedNode) {
+          setIsNodeBeingEdited(false);
+        }
+
+        if (selectedNode) {
+          const newNode = treeService.insertNode(selectedNode.id, '<div>hello world</div>');
+          setSelectedNodeId(newNode.id);
+        }
+      }
+
+      if (e.key === 'Delete') {
+        if (selectedNode) {
+          e.preventDefault();
+          treeService.deleteNode(selectedNode.id);
+          setSelectedNodeId(selectedParentNodeId);
+        }
+      }
+
+      if (e.key === 'Enter') {
+        if (selectedParentNodeId) {
+          e.preventDefault();
+          treeService.insertNode(selectedParentNodeId, '<div>hello world</div>');
+        }
+      }
+
+    });
+    return () => {
+      window.removeEventListener('keydown', () => { });
+    };
+  }, []);
+}
+
+
 
 export default function ReactFlowMindMap({ treeData }: ReactFlowMindMapProps) {
   const { nodes: initialNodes, edges: initialEdges } = transformTreeToFlow(treeData);
@@ -119,6 +126,8 @@ export default function ReactFlowMindMap({ treeData }: ReactFlowMindMapProps) {
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
   const stringifiedTreeData = JSON.stringify(treeData);
+
+  useMindMapKeyboardEvents();
 
   useEffect(() => {
     const { nodes: newNodes, edges: newEdges } = transformTreeToFlow(treeData);

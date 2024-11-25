@@ -1,7 +1,7 @@
-import Node from '../Node';
+import {TreeNode} from '@/components/TreeNode';
 
 export interface TreeState {
-  root: Node;
+  root: TreeNode;
 }
 
 export default class Tree {
@@ -9,11 +9,10 @@ export default class Tree {
 
   constructor(treeState?: TreeState) {
     this.treeState = treeState ?? {
-      root: new Node({
-        id: 'root',
+      root: new TreeNode({
         children: [],
         parentId: null,
-        htmlContent: '<div>Root Node</div>',
+        html: '<div>Root Node</div>',
       }),
     };
   }
@@ -27,7 +26,7 @@ export default class Tree {
       return null;
     }
 
-    let resolvedNode: null | Node = null;
+    let resolvedNode: null | TreeNode = null;
 
     root.children.forEach((child) => {
       if (resolvedNode === null) {
@@ -48,11 +47,11 @@ export default class Tree {
       const nodeParent = this.findNodeById(node.parentId ?? '');
       if (nodeParent) {
         const nodeIndex = nodeParent.children.findIndex(
-          (node: Node) => node.id === id
+          (node: TreeNode) => node.id === id,
         );
-        
+
         if (nodeIndex !== -1) {
-          nodeParent.children.splice(nodeIndex, 1); 
+          nodeParent.children.splice(nodeIndex, 1);
         }
       }
     }

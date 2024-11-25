@@ -1,88 +1,185 @@
-import {ReactNode, useMemo, useReducer, useCallback} from 'react';
-import Tree from '.';
-import {createNewNode} from '../Node';
+import {useCallback, useReducer} from 'react';
+import {TreeService} from '@/types/tree';
+import {TreeNode} from '@/components/TreeNode';
 
 enum TreeAction {
-  insert = 'INSERT',
-  editNodeHtml = 'EDIT_HTML',
-  deleteNode = 'DELETE_NODE',
+  INSERT = 'INSERT',
+  EDIT_HTML = 'EDIT_HTML',
+  DELETE = 'DELETE',
 }
 
-type treeReducerValue = {
-  parentId?: string;
-  id?: string;
-  content?: ReactNode;
-  htmlContent?: string;
+interface TreeState {
+  root: TreeNode;
+}
+
+interface TreeReducerValue {
+  id: string;
+  parentId: string | null;
+  html: string;
+}
+
+type TreeActionType = {
+  type: TreeAction;
+  payload: TreeReducerValue;
 };
 
-type reducerAction = (value: treeReducerValue) => void;
+function treeReducer(state: TreeState, action: TreeActionType): TreeState {
+  switch (action.type) {
+    case TreeAction.INSERT: {
+      const {id, parentId, html} = action.payload;
 
-interface TreeReducerTypes {
-  action: TreeAction;
-  value: treeReducerValue;
-}
+      const newNode = new TreeNode({
+        id,
+        parentId,
+        html,
+        children: [],
+      });
 
-function treeReducer(tree: Tree, {action, value}: TreeReducerTypes): Tree {
-  // Create a new tree only if the structure changes
-  if (action === TreeAction.insert || action === TreeAction.deleteNode) {
-    if (action === TreeAction.insert && value.parentId) {
-      const parentNode = tree.findNodeById(value.parentId);
-      parentNode?.insertChild(createNewNode(value.parentId, value.htmlContent ?? ''));
+      const insertIntoNode = (node: TreeNode): boolean => {
+        if (node.id === parentId) {
+          node.insertChild(newNode);
+          return true;
+        }
+
+        for (const child of node.children) {
+          if (insertIntoNode(child)) {
+            return true;
+          }
+        }
+
+        return false;
+      };
+
+      insertIntoNode(state.root);
+      return {...state};
     }
 
-    if (action === TreeAction.deleteNode) {
-      tree.deleteChild(value.id ?? '');
-    }
-    
-    return new Tree(tree.state);
-  }
+    case TreeAction.EDIT_HTML: {
+      const {id, html} = action.payload;
 
-  // For content edits, create a new tree with the same state to trigger rerender
-  if (action === TreeAction.editNodeHtml) {
-    const node = tree.findNodeById(value.id ?? '');
-    if (node) {
-      node.htmlContent = value.htmlContent ?? '';
-      // Create new tree instance but keep the same state structure
-      return new Tree({...tree.state});
-    }
-  }
+      const editNode = (node: TreeNode): boolean => {
+        if (node.id === id) {
+          node.html = html;
+          return true;
+        }
 
-  return tree;
+        for (const child of node.children) {
+          if (editNode(child)) {
+            return true;
+          }
+        }
+
+        return false;
+      };
+
+      editNode(state.root);
+      return {...state};
+    }
+
+    case TreeAction.DELETE: {
+      const {id} = action.payload;
+
+      const deleteFromNode = (node: TreeNode): boolean => {
+        const index = node.children.findIndex((child) => child.id === id);
+
+        if (index !== -1) {
+          node.children.splice(index, 1);
+          return true;
+        }
+
+        for (const child of node.children) {
+          if (deleteFromNode(child)) {
+            return true;
+          }
+        }
+
+        return false;
+      };
+
+      deleteFromNode(state.root);
+      return {...state};
+    }
+
+    default:
+      return state;
+  }
 }
 
-export class TreeService {
-  tree: Tree;
-  insertNode: reducerAction;
-  editNodeHtml: reducerAction;
-  deleteNode: reducerAction;
+const initialState: TreeState = {
+  root: new TreeNode({
+    children: [],
+    parentId: null,
+    html: '<div>Root Node</div>',
+  }),
+};
 
-  constructor(tree: Tree) {
-    this.tree = tree;
-  }
-}
+export function useTreeService(): TreeService {
+  const [state, dispatch] = useReducer(treeReducer, initialState);
 
-export default function useTreeService() {
-  const initialTree = new Tree();
-  const [tree, dispatch] = useReducer(treeReducer, initialTree);
+  const getNodeById = useCallback(
+    (id: string): TreeNode | undefined => {
+      const findNode = (node: TreeNode): TreeNode | undefined => {
+        if (node.id === id) {
+          return node;
+        }
 
-  const insertNode = useCallback((value: treeReducerValue) => 
-    dispatch({action: TreeAction.insert, value}), [dispatch]);
-    
-  const editNodeHtml = useCallback((value: treeReducerValue) => 
-    dispatch({action: TreeAction.editNodeHtml, value}), [dispatch]);
-    
-  const deleteNode = useCallback((value: treeReducerValue) => 
-    dispatch({action: TreeAction.deleteNode, value}), [dispatch]);
+        for (const child of node.children) {
+          const found = findNode(child);
+          if (found) {
+            return found;
+          }
+        }
 
-  const treeService = useMemo(() => {
-    const service = new TreeService(tree);
-    service.insertNode = insertNode;
-    service.editNodeHtml = editNodeHtml;
-    service.deleteNode = deleteNode;
-    return service;
-  }, [tree, insertNode, editNodeHtml, deleteNode]);
+        return undefined;
+      };
+
+      return findNode(state.root);
+    },
+    [state.root],
+  );
+
+  const insertNode = useCallback(
+    (parentId: string, html: string) => {
+      const newNode = new TreeNode({
+        parentId,
+        html,
+        children: [],
+      });
+      dispatch({
+        type: TreeAction.INSERT,
+        payload: newNode,
+      });
+      return newNode;
+    },
+    [dispatch],
+  );
+
+  const editNodeHtml = useCallback(
+    (nodeId: string, html: string) => {
+      console.log('editNodeHtml', {nodeId, html});
+      dispatch({
+        type: TreeAction.EDIT_HTML,
+        payload: {id: nodeId, parentId: null, html},
+      });
+    },
+    [dispatch],
+  );
+
+  const deleteNode = useCallback(
+    (nodeId: string) => {
+      dispatch({
+        type: TreeAction.DELETE,
+        payload: {id: nodeId, parentId: null, html: ''},
+      });
+    },
+    [dispatch],
+  );
 
   return {
-    treeService
+    tree: state,
+    getNodeById,
+    insertNode,
+    editNodeHtml,
+    deleteNode,
   };
 }

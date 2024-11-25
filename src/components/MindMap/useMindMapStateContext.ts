@@ -1,14 +1,8 @@
-import {createContext, useContext} from 'react';
-
-interface MindMapState {
-  selectedNodeId: string | null;
-  setSelectedNodeId: (nodeId: string | null) => void;
-}
-
-export const mindMapStateContext = createContext<MindMapState | null>(null);
+import {useContext} from 'react';
+import MindMapStateContext from './MindMapStateContext';
 
 export default function useMindMapStateContext() {
-  const context = useContext(mindMapStateContext);
+  const context = useContext(MindMapStateContext);
   if (context === null) {
     throw new Error(
       'useMindMapStateContext must be used within a MindMapStateProvider',
