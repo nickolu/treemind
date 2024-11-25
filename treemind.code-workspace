@@ -19,8 +19,7 @@
         "[javascriptreact]": {
             "editor.defaultFormatter": "esbenp.prettier-vscode"
         },
-        "prettier.prettierPath": "${workspaceFolder}/node_modules/.bin/prettier",
-        "javascript.validate.enable": false,
-       
+        
+        "javascript.validate.enable": false,  
     }
 }
