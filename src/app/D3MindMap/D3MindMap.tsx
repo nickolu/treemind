@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import * as d3 from 'd3';
-import Tree from '../Tree';
-import Node from '../Node';
+import Tree from '@/components/Tree';
+import Node from '@/components/Node';
 
 const dimensions = { width: 1168, height: 800 };
 
@@ -15,7 +15,6 @@ function nodeHtml(children: string) {
 export default function D3MindMap({ treeData }) {
   const svgRef = useRef(null);
 
-  
   const stringifiedTreeData = JSON.stringify(treeData);
   useEffect(() => {
     if (!svgRef.current) return;
@@ -100,11 +99,11 @@ export default function D3MindMap({ treeData }) {
       svg.selectAll("*").remove();
     };
 
-  }, [stringifiedTreeData, treeData]); 
+  }, [stringifiedTreeData, treeData]);
 
   return (
-    <div className="mind-map-container" style={{width: dimensions.width, height: dimensions.height, border: '1px solid #ccc'}}>
-      <svg 
+    <div className="mind-map-container" style={{ width: dimensions.width, height: dimensions.height, border: '1px solid #ccc' }}>
+      <svg
         ref={svgRef}
         key={JSON.stringify(treeData)}
       ></svg>

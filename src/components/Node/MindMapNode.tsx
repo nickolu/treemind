@@ -1,6 +1,6 @@
-import {useState, useCallback, memo, useRef, useEffect} from 'react';
-import Node, {NodeJson} from '.';
-import {TreeService} from '../Tree/useTreeService';
+import { useState, useCallback, memo, useRef, useEffect } from 'react';
+import Node from '.';
+import { TreeService } from '@/components/Tree/useTreeService';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 import {
@@ -13,7 +13,6 @@ import {
 } from '@mui/material';
 import SubdirectoryArrowRightIcon from '@mui/icons-material/SubdirectoryArrowRight';
 import DeleteIcon from '@mui/icons-material/Delete';
-import { tree } from 'd3';
 
 type NodeComponentProps = {
   node: Node;
@@ -34,7 +33,7 @@ const EditorModal = ({
   }, []);
 
   const handleSave = useCallback(() => {
-    treeService.editNodeHtml({id: node.id, htmlContent: tempContent});
+    treeService.editNodeHtml({ id: node.id, htmlContent: tempContent });
     setIsModalOpen(false);
   }, [node.id, tempContent, treeService]);
 
@@ -64,10 +63,10 @@ const EditorModal = ({
             toolbar: [
               ['bold', 'italic', 'underline'],
               ['link'],
-              [{list: 'ordered'}, {list: 'bullet'}],
+              [{ list: 'ordered' }, { list: 'bullet' }],
             ],
           }}
-          onFocus={() => {}}
+          onFocus={() => { }}
           preserveWhitespace
           bounds=".quill-editor"
           ref={(el) => {
@@ -76,7 +75,7 @@ const EditorModal = ({
             }
           }}
         />
-        <Box sx={{mt: 2, display: 'flex', justifyContent: 'flex-end', gap: 1}}>
+        <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
           <Button onClick={handleClose}>Cancel</Button>
           <Button variant="contained" onClick={handleSave}>
             Save
@@ -112,14 +111,14 @@ const NodeContent = ({
           }}
         />
       ) : (
-        <div dangerouslySetInnerHTML={{__html: node.htmlContent}} />
+        <div dangerouslySetInnerHTML={{ __html: node.htmlContent }} />
       )}
       <button onClick={handleOpen}>Edit</button>
     </div>
   );
 };
 
-const NodeControls = ({node, treeService}) => {
+const NodeControls = ({ node, treeService }) => {
   const handleInsertChild = useCallback(() => {
     treeService.insertNode({
       parentId: node.id,
@@ -171,37 +170,37 @@ const MindMapNode = memo(function MindMapNode({
     }
   }, [editor, isModalOpen]);
 
-  useEffect(() => {
-    window.addEventListener('keydown', (e) => {
-      e.preventDefault();
-      if (e.key === 'Tab') {
-        e.preventDefault();
-        
-        treeService.insertNode({
-          parentId: node.id,
-          content: 'hello world',
-          htmlContent: '<div>hello world</div>',
-        });
-      }
+  // useEffect(() => {
+  //   window.addEventListener('keydown', (e) => {
+  //     e.preventDefault();
+  //     if (e.key === 'Tab') {
+  //       e.preventDefault();
 
-      if (e.key === 'Delete') {
-        treeService.deleteNode({
-          id: node.id,
-        });
-      }
+  //       treeService.insertNode({
+  //         parentId: node.id,
+  //         content: 'hello world',
+  //         htmlContent: '<div>hello world</div>',
+  //       });
+  //     }
 
-      if (e.key === 'Enter') {
-        treeService.insertNode({
-          parentId: node.parentId,
-          content: 'hello world',
-          htmlContent: '<div>hello world</div>',
-        });
-      }
-    });
-    return () => {
-      window.removeEventListener('keydown', () => {});
-    };
-  }, []);
+  //     if (e.key === 'Delete') {
+  //       treeService.deleteNode({
+  //         id: node.id,
+  //       });
+  //     }
+
+  //     if (e.key === 'Enter') {
+  //       treeService.insertNode({
+  //         parentId: node.parentId,
+  //         content: 'hello world',
+  //         htmlContent: '<div>hello world</div>',
+  //       });
+  //     }
+  //   });
+  //   return () => {
+  //     window.removeEventListener('keydown', () => {});
+  //   };
+  // }, []);
 
   return (
     <Box

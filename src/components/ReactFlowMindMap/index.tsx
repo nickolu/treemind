@@ -12,8 +12,9 @@ import ReactFlow, {
   Handle,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
-import useTreeContext from '../Tree/useTreeContext';
-import MindMapNode from '../Node/MindMapNode';
+import useTreeServiceContext from '@/components/Tree/useTreeServiceContext';
+import MindMapNode from '@/components/Node/MindMapNode';
+import { Box } from '@mui/material';
 
 interface MindMapNodeData {
   id: string;
@@ -25,8 +26,6 @@ interface ReactFlowMindMapProps {
   treeData: MindMapNodeData;
 }
 
-const nodeWidth = 150;
-const nodeHeight = 50;
 
 const transformTreeToFlow = (
   node: MindMapNodeData,
@@ -71,7 +70,7 @@ const transformTreeToFlow = (
         nodes,
         edges
       );
-      
+
       childY += spacing;
     });
   }
@@ -80,16 +79,16 @@ const transformTreeToFlow = (
 };
 
 const ReactFlowMindMapNode = ({ data }: NodeProps) => {
-  const treeService = useTreeContext();
+  const treeService = useTreeServiceContext();
   return (
-    <div
-      style={{
+    <Box
+      sx={{
         background: 'white',
         border: '1px solid #ccc',
         borderRadius: '5px',
         padding: '10px',
-        width: nodeWidth,
-        minHeight: nodeHeight,
+        width: 150,
+        minHeight: 50,
       }}
     >
       <Handle
@@ -105,8 +104,7 @@ const ReactFlowMindMapNode = ({ data }: NodeProps) => {
         id="right"
         style={{ background: '#555' }}
       />
-      
-    </div>
+    </Box>
   );
 };
 
@@ -118,7 +116,7 @@ const nodeTypes = {
 
 export default function ReactFlowMindMap({ treeData }: ReactFlowMindMapProps) {
   const { nodes: initialNodes, edges: initialEdges } = transformTreeToFlow(treeData);
-  
+
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
@@ -132,26 +130,26 @@ export default function ReactFlowMindMap({ treeData }: ReactFlowMindMapProps) {
 
   const onInit = useCallback(() => null, []);
 
-  return (    
-      <div style={{ width: '100%', height: '600px', border: '1px solid #ddd' }}>
-        <ReactFlow
-          nodes={nodes}
-          edges={edges}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          onInit={onInit}
-          nodeTypes={nodeTypes}
-          fitView
-          defaultEdgeOptions={{
-            type: 'smoothstep',
-            animated: false,
-            style: { stroke: '#333', strokeWidth: 2 }
-          }}
-          connectionMode={ConnectionMode.Strict}
-        >
-          <Background />
-          <Controls />
-        </ReactFlow>
-      </div>
+  return (
+    <div style={{ width: '100%', height: '600px', border: '1px solid #ddd' }}>
+      <ReactFlow
+        nodes={nodes}
+        edges={edges}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
+        onInit={onInit}
+        nodeTypes={nodeTypes}
+        fitView
+        defaultEdgeOptions={{
+          type: 'smoothstep',
+          animated: false,
+          style: { stroke: '#333', strokeWidth: 2 }
+        }}
+        connectionMode={ConnectionMode.Strict}
+      >
+        <Background />
+        <Controls />
+      </ReactFlow>
+    </div>
   );
 }
