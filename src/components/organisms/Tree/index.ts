@@ -1,10 +1,10 @@
-import {TreeNode} from '@/components/TreeNode';
+import {TreeNode} from '@/components/molecules/TreeNode';
 
 export interface TreeState {
   root: TreeNode;
 }
 
-export default class Tree {
+export class Tree {
   treeState: TreeState;
 
   constructor(treeState?: TreeState) {

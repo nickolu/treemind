@@ -10,10 +10,10 @@ import ReactFlow, {
 
 } from 'reactflow';
 import 'reactflow/dist/style.css';
-import ReactFlowMindMapNode from './ReactFlowMindMapNode';
-import useTreeServiceContext from '@/components/Tree/useTreeServiceContext';
-import useMindMapStateContext from '@/components/MindMap/useMindMapStateContext';
-import { TreeNode } from '@/components/TreeNode';
+import { ReactFlowMindMapNode } from '@/components/molecules/ReactFlowMindMapNode';
+import { useTreeServiceContext } from '@/components/organisms/TreeService/useTreeServiceContext';
+import { useMindMapStateContext } from '@/components/organisms/MindMapState/useMindMapStateContext';
+import { TreeNode } from '@/components/molecules/TreeNode';
 
 interface ReactFlowMindMapProps {
   treeData: TreeNode;
@@ -77,25 +77,32 @@ const nodeTypes = {
 function useMindMapKeyboardEvents() {
   const treeService = useTreeServiceContext();
   const { selectedNodeId, setSelectedNodeId, isNodeBeingEdited, setIsNodeBeingEdited } = useMindMapStateContext();
+
   const selectedNode = treeService.getNodeById(selectedNodeId ?? '');
   const selectedParentNodeId = selectedNode?.parentId ?? treeService.tree.root.id;
 
   useEffect(() => {
-    window.addEventListener('keydown', (e) => {
+    const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Tab') {
         e.preventDefault();
-
         if (isNodeBeingEdited || !selectedNode) {
           setIsNodeBeingEdited(false);
         }
-
         if (selectedNode) {
           const newNode = treeService.insertNode(selectedNode.id, '<div>hello world</div>');
           setSelectedNodeId(newNode.id);
         }
       }
 
-      if (e.key === 'Delete') {
+      else if (e.key === 'Enter') {
+        if (selectedParentNodeId) {
+          e.preventDefault();
+          const newNode = treeService.insertNode(selectedParentNodeId, '<div>hello world</div>');
+          setSelectedNodeId(newNode.id);
+        }
+      }
+
+      else if (e.key === 'Delete') {
         if (selectedNode) {
           e.preventDefault();
           treeService.deleteNode(selectedNode.id);
@@ -103,24 +110,23 @@ function useMindMapKeyboardEvents() {
         }
       }
 
-      if (e.key === 'Enter') {
-        if (selectedParentNodeId) {
-          e.preventDefault();
-          treeService.insertNode(selectedParentNodeId, '<div>hello world</div>');
-        }
+      else {
+        setIsNodeBeingEdited(true);
       }
-
-    });
-    return () => {
-      window.removeEventListener('keydown', () => { });
     };
-  }, []);
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [selectedNodeId, selectedNode, selectedParentNodeId, isNodeBeingEdited, setIsNodeBeingEdited, setSelectedNodeId, treeService]);
 }
 
-
-
-export default function ReactFlowMindMap({ treeData }: ReactFlowMindMapProps) {
+export function ReactFlowMindMap({ treeData }: ReactFlowMindMapProps) {
   const { nodes: initialNodes, edges: initialEdges } = transformTreeToFlow(treeData);
+  const { selectedNodeId } = useMindMapStateContext();
+
+  console.log('ReactFlowMindMap selectedNodeId', selectedNodeId);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);

@@ -1,10 +1,10 @@
 import { Handle, NodeProps, Position } from "reactflow";
-import useTreeServiceContext from "@/components/Tree/useTreeServiceContext";
 import { Box } from "@mui/material";
-import { MindMapNode } from "@/components/TreeNode/MindMapNode";
-import { TreeNode } from "@/components/TreeNode";
+import { useTreeServiceContext } from "@/components/organisms/TreeService/useTreeServiceContext";
+import { MindMapNode } from "@/components/organisms/MindMapNode";
+import { TreeNode } from "@/components/molecules/TreeNode";
 
-const ReactFlowMindMapNode = ({ data }: NodeProps<TreeNode>) => {
+export const ReactFlowMindMapNode = ({ data }: NodeProps<TreeNode>) => {
     const treeService = useTreeServiceContext();
     const treeNode = new TreeNode({
         id: data.id,
@@ -39,5 +39,3 @@ const ReactFlowMindMapNode = ({ data }: NodeProps<TreeNode>) => {
         </Box>
     );
 };
-
-export default ReactFlowMindMapNode;

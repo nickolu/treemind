@@ -1,11 +1,11 @@
 import './App.css';
 import { Box } from '@mui/material';
 
-import ReactFlowMindMap from '@/app/ReactFlowMindMap';
-import { useTreeService } from '@/components/Tree/useTreeService';
-import TreeServiceContext from '@/components/Tree/TreeServiceContext';
-import MindMapStateContext from '@/components/MindMap/MindMapStateContext';
-import useMindMapState from '@/components/MindMap/useMindMapState';
+import { ReactFlowMindMap } from '@/components/organisms/ReactFlowMindMap';
+import { useTreeService } from '@/components/organisms/TreeService/useTreeService';
+import { TreeServiceContext } from '@/components/organisms/TreeService/TreeServiceContext';
+import { MindMapStateContext } from '@/components/organisms/MindMapState/MindMapStateContext';
+import { useMindMapState } from '@/components/organisms/MindMapState/useMindMapState';
 
 function App() {
   const treeService = useTreeService();
@@ -23,6 +23,5 @@ function App() {
     </TreeServiceContext.Provider>
   );
 }
-
 
 export default App;

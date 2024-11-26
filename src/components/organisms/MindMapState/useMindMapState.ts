@@ -7,7 +7,7 @@ export interface MindMapState {
   setIsNodeBeingEdited: (isNodeBeingEdited: boolean) => void;
 }
 
-export default function useMindMapState(): MindMapState {
+export function useMindMapState(): MindMapState {
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [isNodeBeingEdited, setIsNodeBeingEdited] = useState<boolean>(false);
 

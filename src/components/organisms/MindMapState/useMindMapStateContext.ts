@@ -1,7 +1,7 @@
 import {useContext} from 'react';
-import MindMapStateContext from './MindMapStateContext';
+import {MindMapStateContext} from '@/components/organisms/MindMapState/MindMapStateContext';
 
-export default function useMindMapStateContext() {
+export function useMindMapStateContext() {
   const context = useContext(MindMapStateContext);
   if (context === null) {
     throw new Error(

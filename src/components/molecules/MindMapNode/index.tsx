@@ -1,15 +1,15 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
-import { TreeService } from '../../types/tree';
+import { TreeService } from '../../../types/tree';
 import { styled } from '@mui/material/styles';
 import { Box, Modal, ButtonGroup, IconButton, TextField } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 
-import useMindMapStateContext from '../MindMap/useMindMapStateContext';
-import { TreeNode } from '.';
+import { useMindMapStateContext } from '@/components/organisms/MindMapState/useMindMapStateContext';
+import { TreeNode } from '../../molecules/TreeNode';
 
 const StyledModal = styled(Modal)({
   display: 'flex',
@@ -116,6 +116,7 @@ const NodeContent = ({
     <div>
       {isNodeBeingEdited && selectedNodeId === treeNode.id ? (
         <TextField
+          autoFocus
           value={tempTextContent}
           inputRef={textEditorRef}
           multiline
@@ -124,7 +125,7 @@ const NodeContent = ({
           }}
           onFocus={() => {
             setIsNodeBeingEdited(true);
-            textEditorRef.current?.focus();
+            textEditorRef.current?.select();
           }}
           onBlur={() => {
             const wrappedContent = `<div>${tempTextContent}</div>`;
@@ -199,7 +200,7 @@ export const MindMapNode: React.FC<{
         setIsModalOpen(true);
       }
     }, [treeNode.html, isNodeBeingEdited]);
-
+    console.log(selectedNodeId, treeNode.id);
     return (
       <Box
         key={treeNode.id}

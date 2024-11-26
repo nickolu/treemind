@@ -1,5 +1,5 @@
-import {TreeState} from '@/components/Tree';
-import {TreeNode} from '@/components/TreeNode';
+import {TreeState} from '@/components/organisms/Tree';
+import {TreeNode} from '@/components/molecules/TreeNode';
 
 export interface TreeService {
   tree: TreeState;

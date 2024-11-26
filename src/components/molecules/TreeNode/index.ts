@@ -14,7 +14,6 @@ export class TreeNode {
   _html: string;
 
   constructor({id, children, parentId, html}: TreeNodeJson) {
-    console.log('new node created with args', {id, children, parentId, html});
     this.id = id ?? uuidv4();
     this.parentId = parentId;
     this.children = children;

@@ -1,6 +1,6 @@
 import {useCallback, useReducer} from 'react';
 import {TreeService} from '@/types/tree';
-import {TreeNode} from '@/components/TreeNode';
+import {TreeNode} from '@/components/molecules/TreeNode';
 
 enum TreeAction {
   INSERT = 'INSERT',
@@ -156,7 +156,6 @@ export function useTreeService(): TreeService {
 
   const editNodeHtml = useCallback(
     (nodeId: string, html: string) => {
-      console.log('editNodeHtml', {nodeId, html});
       dispatch({
         type: TreeAction.EDIT_HTML,
         payload: {id: nodeId, parentId: null, html},
