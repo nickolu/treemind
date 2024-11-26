@@ -2,13 +2,11 @@ import 'react-quill/dist/quill.snow.css';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { TreeService } from '@/types/tree';
 import { Box } from '@mui/material';
-
 import { useMindMapStateContext } from '@/components/organisms/MindMapState/useMindMapStateContext';
 import { TreeNode } from '@/components/molecules/TreeNode';
 import { NodeContent } from '@/components/molecules/NodeContent';
 import { NodeControls } from '@/components/molecules/NodeControls';
 import { EditorModal } from '@/components/molecules/EditorModal';
-
 
 export const MindMapNode: React.FC<{
   treeNode: TreeNode;

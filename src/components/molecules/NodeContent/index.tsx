@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { TextField } from '@mui/material';
 import { TreeService } from '@/types/tree';
 import { TreeNode } from '@/components/molecules/TreeNode';
@@ -27,9 +27,14 @@ export const NodeContent = ({
         const wrappedContent = `<div>${tempTextContent}</div>`;
         if (wrappedContent !== treeNode.html) {
             treeService.editNodeHtml(treeNode.id, wrappedContent);
-            setTempTextContent('');
         }
     }, [tempTextContent, treeNode.html, treeService, treeNode.id]);
+
+    useEffect(() => {
+        if (!isNodeBeingEdited) {
+            updateNodeHtml();
+        }
+    }, [isNodeBeingEdited, updateNodeHtml]);
 
     return (
         <div>
@@ -42,12 +47,11 @@ export const NodeContent = ({
                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                         setTempTextContent(e.target.value);
                     }}
-                    onFocus={() => {
+                    onFocus={(event: React.FocusEvent<HTMLInputElement>) => {
                         setIsNodeBeingEdited(true);
-                        textEditorRef.current?.select();
+                        event.target.select();
                     }}
-                    onBlur={(e) => {
-                        e.stopPropagation();
+                    onBlur={() => {
                         updateNodeHtml();
                         setIsNodeBeingEdited(false);
                     }}

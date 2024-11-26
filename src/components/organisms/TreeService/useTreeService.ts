@@ -138,6 +138,15 @@ export function useTreeService(): TreeService {
     [state.root],
   );
 
+  const findNodeIndex = useCallback((node: TreeNode): number => {
+    const parent = getNodeById(node.parentId ?? '');
+
+    if (parent) {
+      return parent.children.findIndex((n) => n.id === node.id);
+    }
+    return -1;
+  }, [getNodeById]);
+
   const insertNode = useCallback(
     (parentId: string, html: string) => {
       const newNode = new TreeNode({
@@ -177,6 +186,7 @@ export function useTreeService(): TreeService {
   return {
     tree: state,
     getNodeById,
+    findNodeIndex,
     insertNode,
     editNodeHtml,
     deleteNode,
