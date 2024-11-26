@@ -1,10 +1,11 @@
-import { memo, useCallback, useEffect } from 'react';
+import { memo, useCallback, useEffect, useState } from 'react';
 import ReactFlow, {
   Controls,
   Background,
   useNodesState,
   useEdgesState,
   ConnectionMode,
+  ReactFlowInstance,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { ReactFlowMindMapNode } from '@/components/molecules/ReactFlowMindMapNode';
@@ -25,6 +26,7 @@ export function ReactFlowMindMap({ treeData }: ReactFlowMindMapProps) {
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+  const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance | null>(null);
 
   const stringifiedTreeData = JSON.stringify(treeData);
 
@@ -34,9 +36,15 @@ export function ReactFlowMindMap({ treeData }: ReactFlowMindMapProps) {
     const { nodes: newNodes, edges: newEdges } = transformTreeToFlow(treeData);
     setNodes(newNodes);
     setEdges(newEdges);
-  }, [stringifiedTreeData, setNodes, setEdges, treeData]);
+    // Center the view after nodes are updated
+    setTimeout(() => {
+      reactFlowInstance?.fitView({ padding: 0.2 });
+    }, 0);
+  }, [stringifiedTreeData, setNodes, setEdges, treeData, reactFlowInstance]);
 
-  const onInit = useCallback(() => null, []);
+  const onInit = useCallback((instance: ReactFlowInstance) => {
+    setReactFlowInstance(instance);
+  }, []);
 
   return (
     <div style={{ width: '100%', height: '600px', border: '1px solid #ddd' }}>

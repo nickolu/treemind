@@ -71,7 +71,7 @@ export const MindMapNode: React.FC<{
           setIsModalOpen={setIsModalOpen}
           setTempHtmlContent={setTempHtmlContent}
           tempHtmlContent={tempHtmlContent}
-          treeService={treeService}
+
         />
       </Box>
     );

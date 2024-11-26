@@ -17,12 +17,13 @@ export function useMindMapKeyboardEvents() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      console.log(isNodeBeingEdited);
       if (isNodeBeingEdited) {
         if (e.key === 'Tab' || e.key === 'Escape' || e.key === 'Enter') {
           setIsNodeBeingEdited(false);
         }
       } else if (selectedNode) {
+        const nodeIndex = treeService.findNodeIndex(selectedNode);
+        const parentNode = treeService.getNodeById(selectedParentNodeId);
         if (e.key === 'Enter') {
           if (selectedParentNodeId) {
             e.preventDefault();
@@ -41,19 +42,31 @@ export function useMindMapKeyboardEvents() {
           setSelectedNodeId(newNode.id);
         } else if (e.key === 'Delete' || e.key === 'Backspace') {
           e.preventDefault();
+
           treeService.deleteNode(selectedNode.id);
-          setSelectedNodeId(selectedParentNodeId);
+
+          if (parentNode?.children.length === 1) {
+            setSelectedNodeId(parentNode?.id ?? treeService.tree.root.id);
+          } else if (nodeIndex === 0) {
+            console.log('remaining children', parentNode?.children);
+            setSelectedNodeId(
+              parentNode?.children[1]?.id ?? treeService.tree.root.id,
+            );
+          } else {
+            setSelectedNodeId(
+              parentNode?.children[nodeIndex - 1]?.id ??
+                treeService.tree.root.id,
+            );
+          }
         } else if (e.key === 'ArrowUp') {
           e.preventDefault();
-          const nodeIndex = treeService.findNodeIndex(selectedNode);
-          if (nodeIndex > 0) {
-            setSelectedNodeId(treeService.tree.root.children[nodeIndex - 1].id);
+          if (parentNode && nodeIndex > 0) {
+            setSelectedNodeId(parentNode.children[nodeIndex - 1].id);
           }
         } else if (e.key === 'ArrowDown') {
           e.preventDefault();
-          const nodeIndex = treeService.findNodeIndex(selectedNode);
-          if (nodeIndex < treeService.tree.root.children.length - 1) {
-            setSelectedNodeId(treeService.tree.root.children[nodeIndex + 1].id);
+          if (parentNode && nodeIndex < parentNode.children.length - 1) {
+            setSelectedNodeId(parentNode.children[nodeIndex + 1].id);
           }
         } else if (e.key === 'ArrowLeft') {
           e.preventDefault();
