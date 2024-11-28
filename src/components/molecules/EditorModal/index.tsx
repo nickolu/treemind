@@ -65,6 +65,7 @@ export const EditorModal = ({
 
     const handleEditorChange = useCallback((content: string) => {
         setHtml(content);
+        treeService.editNodeHtml(node.id, content);
     }, []);
 
     const handleClose = useCallback(() => {

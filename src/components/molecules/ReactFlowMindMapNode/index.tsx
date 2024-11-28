@@ -29,7 +29,7 @@ export const ReactFlowMindMapNode = ({ data }: NodeProps<TreeNode>) => {
                 id="left"
                 style={{ background: '#555' }}
             />}
-            <MindMapNode treeService={treeService} treeNode={treeNode} />
+            <MindMapNode treeNode={treeNode} />
             <Handle
                 type="source"
                 position={Position.Right}

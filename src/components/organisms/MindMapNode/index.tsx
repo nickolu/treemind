@@ -1,26 +1,25 @@
 import 'react-quill/dist/quill.snow.css';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { TreeService } from '@/types/tree';
-import { Box } from '@mui/material';
+import { Box, TextField } from '@mui/material';
 import { useMindMapStateContext } from '@/components/organisms/MindMapState/useMindMapStateContext';
 import { TreeNode } from '@/components/molecules/TreeNode';
 import { NodeControls } from '@/components/molecules/NodeControls';
 import { EditorModal } from '@/components/molecules/EditorModal';
 import { parseTextFromHtml } from '@/components/atoms/parseTextFromHtml';
-import { NodeTextEditor } from '@/components/atoms/NodeTextEditor';
 import { NodeHtmlRenderer } from '@/components/atoms/NodeHtmlRenderer';
+import { useTreeServiceContext } from '@/components/organisms/TreeService/useTreeServiceContext';
 
 export const MindMapNode: React.FC<{
   treeNode: TreeNode;
-  treeService: TreeService;
 }> = ({
   treeNode,
-  treeService,
 }) => {
     const { selectedNodeId, setSelectedNodeId, isNodeBeingEdited, setIsNodeBeingEdited, setAreKeyboardEventsEnabled } = useMindMapStateContext();
+    const treeService = useTreeServiceContext();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [text, setText] = useState('');
     const [html, setHtml] = useState(treeNode.html);
+    const [hasChanged, setHasChanged] = useState(false);
 
     const textEditorRef = useRef<HTMLInputElement>(null);
 
@@ -58,12 +57,22 @@ export const MindMapNode: React.FC<{
     const handleOpen = useCallback(() => {
       setIsNodeBeingEdited(false);
       setIsModalOpen(true);
-    }, [isNodeBeingEdited]);
+    }, [setIsNodeBeingEdited]);
 
-    const updateHtml = useCallback((html: string) => {
-      treeService.editNodeHtml(treeNode.id, html);
-      setHtml(html);
-    }, [treeService, treeNode.id]);
+    const handleTextChange = useCallback((newText: string) => {
+      setHasChanged(true);
+      setText(newText);
+    }, []);
+
+    const handleBlur = useCallback(() => {
+      setIsNodeBeingEdited(false);
+      if (hasChanged) {
+        const newHtml = `<div>${text}</div>`;
+        setHtml(newHtml);
+        treeService.editNodeHtml(treeNode.id, newHtml);
+        setHasChanged(false);
+      }
+    }, [hasChanged, text, treeNode.id, treeService]);
 
     return (
       <Box
@@ -83,15 +92,24 @@ export const MindMapNode: React.FC<{
           minHeight: 50,
         }}
       >
-
+        {text}
         <div>
           {isNodeBeingEdited && selectedNodeId === treeNode.id ? (
-            <NodeTextEditor
-              textEditorRef={textEditorRef}
-              text={text}
-              setText={setText}
-              setHtml={setHtml}
-              setIsNodeBeingEdited={setIsNodeBeingEdited}
+            <TextField
+              autoFocus
+              size='small'
+              variant='standard'
+              value={text}
+              inputRef={textEditorRef}
+              multiline
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                handleTextChange(e.target.value);
+              }}
+              onFocus={(event: React.FocusEvent<HTMLInputElement>) => {
+                setIsNodeBeingEdited(true);
+                event.target.select();
+              }}
+              onBlur={handleBlur}
             />
           ) : (
             <div onClick={() => setIsNodeBeingEdited(true)}><NodeHtmlRenderer html={html} /></div>
