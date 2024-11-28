@@ -16,7 +16,7 @@ function App() {
   return (
     <TreeServiceContext.Provider value={treeService}>
       <MindMapStateContext.Provider value={mindMapState}>
-        <Box sx={{ maxWidth: 1200, margin: '20px auto', padding: '0 20px' }}>
+        <Box sx={{ margin: '20px auto', padding: '0 20px' }}>
           <ReactFlowMindMap treeData={tree.root} />
         </Box>
       </MindMapStateContext.Provider>

@@ -12,7 +12,7 @@ export class Tree {
       root: new TreeNode({
         children: [],
         parentId: null,
-        html: '<div>Root Node</div>',
+        html: 'New Mindmap',
       }),
     };
   }

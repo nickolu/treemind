@@ -1,3 +1,4 @@
+import {parseTextFromHtml} from '@/components/atoms/parseTextFromHtml';
 import {v4 as uuidv4} from 'uuid';
 
 export type TreeNodeJson = {
@@ -35,9 +36,7 @@ export class TreeNode {
   }
 
   get text() {
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(this._html, 'text/html');
-    return doc.body.textContent || '';
+    return parseTextFromHtml(this._html);
   }
 
   set text(text: string) {

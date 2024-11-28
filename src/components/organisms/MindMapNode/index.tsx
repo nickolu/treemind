@@ -7,6 +7,7 @@ import { TreeNode } from '@/components/molecules/TreeNode';
 import { NodeContent } from '@/components/molecules/NodeContent';
 import { NodeControls } from '@/components/molecules/NodeControls';
 import { EditorModal } from '@/components/molecules/EditorModal';
+import { parseTextFromHtml } from '@/components/atoms/parseTextFromHtml';
 
 export const MindMapNode: React.FC<{
   treeNode: TreeNode;
@@ -15,25 +16,53 @@ export const MindMapNode: React.FC<{
   treeNode,
   treeService,
 }) => {
-    const { selectedNodeId, setSelectedNodeId, isNodeBeingEdited, setIsNodeBeingEdited } = useMindMapStateContext();
+    const { selectedNodeId, setSelectedNodeId, isNodeBeingEdited, setIsNodeBeingEdited, setAreKeyboardEventsEnabled } = useMindMapStateContext();
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [tempTextContent, setTempTextContent] = useState('');
-    const [tempHtmlContent, setTempHtmlContent] = useState(treeNode.html);
+    const [text, setText] = useState('');
+    const [html, setHtml] = useState(treeNode.html);
 
     const textEditorRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
+      console.log('on html change');
+      const updatedText = parseTextFromHtml(html);
+      setText(updatedText);
+      console.log('html', html);
+      console.log('updatedText', updatedText);
+    }, [html]);
+
+    useEffect(() => {
       if (isNodeBeingEdited && selectedNodeId === treeNode.id) {
-        setTempTextContent(treeNode.text);
+        console.log('isNodeBeingEdited', isNodeBeingEdited);
+        setText(treeNode.text);
       }
     }, [isNodeBeingEdited, selectedNodeId, treeNode.id, treeNode.text]);
 
-    const handleOpen = useCallback(() => {
-      if (!isNodeBeingEdited) {
-        setTempHtmlContent(treeNode.html);
-        setIsModalOpen(true);
+    useEffect(() => {
+      setAreKeyboardEventsEnabled(!isNodeBeingEdited);
+    }, [isNodeBeingEdited, setAreKeyboardEventsEnabled]);
+
+    useEffect(() => {
+      if (selectedNodeId) {
+        textEditorRef.current?.focus();
+      } else {
+        textEditorRef.current?.blur();
       }
-    }, [treeNode.html, isNodeBeingEdited]);
+    }, [selectedNodeId]);
+
+    useEffect(() => {
+      setAreKeyboardEventsEnabled(!isModalOpen);
+    }, [isModalOpen])
+
+    const handleOpen = useCallback(() => {
+      setIsNodeBeingEdited(false);
+      setIsModalOpen(true);
+    }, [isNodeBeingEdited]);
+
+    const updateHtml = useCallback((html: string) => {
+      treeService.editNodeHtml(treeNode.id, html);
+      setHtml(html);
+    }, [treeService, treeNode.id]);
 
     return (
       <Box
@@ -42,7 +71,6 @@ export const MindMapNode: React.FC<{
         tabIndex={0}
         onFocus={() => {
           setSelectedNodeId(treeNode.id)
-          textEditorRef.current?.focus();
         }}
         onBlur={() => setIsNodeBeingEdited(false)}
         sx={{
@@ -58,20 +86,20 @@ export const MindMapNode: React.FC<{
           isNodeBeingEdited={isNodeBeingEdited}
           treeNode={treeNode}
           setIsNodeBeingEdited={setIsNodeBeingEdited}
-          setTempTextContent={setTempTextContent}
-          tempTextContent={tempTextContent}
+          setText={setText}
+          text={text}
           textEditorRef={textEditorRef}
-          treeService={treeService}
           selectedNodeId={selectedNodeId}
+          setHtml={updateHtml}
+          html={html}
         />
-        <NodeControls node={treeNode} treeService={treeService} handleOpen={handleOpen} />
+        <NodeControls onClickEdit={handleOpen} />
         <EditorModal
           isModalOpen={isModalOpen}
           node={treeNode}
           setIsModalOpen={setIsModalOpen}
-          setTempHtmlContent={setTempHtmlContent}
-          tempHtmlContent={tempHtmlContent}
-
+          setHtml={setHtml}
+          html={html}
         />
       </Box>
     );

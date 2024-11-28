@@ -109,7 +109,7 @@ const initialState: TreeState = {
   root: new TreeNode({
     children: [],
     parentId: null,
-    html: '<div>Root Node</div>',
+    html: 'New Mindmap',
   }),
 };
 
@@ -138,14 +138,17 @@ export function useTreeService(): TreeService {
     [state.root],
   );
 
-  const findNodeIndex = useCallback((node: TreeNode): number => {
-    const parent = getNodeById(node.parentId ?? '');
+  const findNodeIndex = useCallback(
+    (node: TreeNode): number => {
+      const parent = getNodeById(node.parentId ?? '');
 
-    if (parent) {
-      return parent.children.findIndex((n) => n.id === node.id);
-    }
-    return -1;
-  }, [getNodeById]);
+      if (parent) {
+        return parent.children.findIndex((n) => n.id === node.id);
+      }
+      return -1;
+    },
+    [getNodeById],
+  );
 
   const insertNode = useCallback(
     (parentId: string, html: string) => {
@@ -183,9 +186,18 @@ export function useTreeService(): TreeService {
     [dispatch],
   );
 
+  const getParentNode = useCallback(
+    (node: TreeNode) => {
+      if (node.parentId) return getNodeById(node.parentId) as TreeNode;
+      return state.root;
+    },
+    [state.root, getNodeById],
+  );
+
   return {
     tree: state,
     getNodeById,
+    getParentNode,
     findNodeIndex,
     insertNode,
     editNodeHtml,

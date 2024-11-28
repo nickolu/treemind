@@ -7,6 +7,7 @@ export interface TreeService {
   editNodeHtml: (nodeId: string, html: string) => void;
   deleteNode: (nodeId: string) => void;
   getNodeById: (nodeId: string) => TreeNode | undefined;
+  getParentNode: (node: TreeNode) => TreeNode;
   findNodeIndex: (node: TreeNode) => number;
 }
 

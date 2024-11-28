@@ -1,43 +1,16 @@
-import React, { useCallback } from 'react';
+import React from 'react';
 import { ButtonGroup, IconButton } from '@mui/material';
-import AddIcon from '@mui/icons-material/Add';
-import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
-import { TreeService } from '@/types/tree';
-import { TreeNode } from '@/components/molecules/TreeNode';
 
 interface NodeControlsProps {
-    node: TreeNode;
-    treeService: TreeService;
-    handleOpen: () => void;
+    onClickEdit: () => void;
 }
 
-export const NodeControls: React.FC<NodeControlsProps> = ({
-    node,
-    treeService,
-    handleOpen,
-}) => {
-    const handleInsertChild = useCallback(() => {
-        treeService.insertNode(
-            node.id,
-            '<div>hello world</div>',
-        );
-    }, [treeService, node.id]);
-
-    const handleDelete = useCallback(() => {
-        treeService.deleteNode(node.id);
-    }, [treeService, node.id]);
-
+export const NodeControls: React.FC<NodeControlsProps> = ({ onClickEdit }) => {
     return (
         <ButtonGroup>
-            <IconButton onClick={handleInsertChild}>
-                <AddIcon />
-            </IconButton>
-            <IconButton onClick={handleOpen}>
+            <IconButton tabIndex={-1} onClick={onClickEdit}>
                 <EditIcon />
-            </IconButton>
-            <IconButton onClick={handleDelete}>
-                <DeleteIcon />
             </IconButton>
         </ButtonGroup>
     );

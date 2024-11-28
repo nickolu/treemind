@@ -12,6 +12,7 @@ import { ReactFlowMindMapNode } from '@/components/molecules/ReactFlowMindMapNod
 import { TreeNode } from '@/components/molecules/TreeNode';
 import { useMindMapKeyboardEvents } from '@/components/molecules/MindMapKeyboardEvents/useMindMapKeyboardEvents';
 import { transformTreeToFlow } from './transformTreeToFlow';
+import { Box } from '@mui/material';
 
 interface ReactFlowMindMapProps {
   treeData: TreeNode;
@@ -47,7 +48,7 @@ export function ReactFlowMindMap({ treeData }: ReactFlowMindMapProps) {
   }, []);
 
   return (
-    <div style={{ width: '100%', height: '600px', border: '1px solid #ddd' }}>
+    <Box sx={{ width: '100%', height: 'calc(100vh - 64px)', border: '1px solid #ddd' }}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -66,6 +67,6 @@ export function ReactFlowMindMap({ treeData }: ReactFlowMindMapProps) {
         <Background />
         <Controls />
       </ReactFlow>
-    </div>
+    </Box>
   );
 }

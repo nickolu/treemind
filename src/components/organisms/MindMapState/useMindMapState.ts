@@ -5,9 +5,13 @@ export interface MindMapState {
   setSelectedNodeId: (nodeId: string | null) => void;
   isNodeBeingEdited: boolean;
   setIsNodeBeingEdited: (isNodeBeingEdited: boolean) => void;
+  areKeyboardEventsEnabled: boolean;
+  setAreKeyboardEventsEnabled: (areKeyboardEventsEnabled: boolean) => void;
 }
 
 export function useMindMapState(): MindMapState {
+  const [areKeyboardEventsEnabled, setAreKeyboardEventsEnabled] =
+    useState(true);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [isNodeBeingEdited, setIsNodeBeingEdited] = useState<boolean>(false);
 
@@ -16,5 +20,7 @@ export function useMindMapState(): MindMapState {
     setSelectedNodeId,
     isNodeBeingEdited,
     setIsNodeBeingEdited,
+    areKeyboardEventsEnabled,
+    setAreKeyboardEventsEnabled,
   };
 }

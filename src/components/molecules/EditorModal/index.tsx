@@ -15,8 +15,8 @@ interface EditorModalProps {
     isModalOpen: boolean;
     setIsModalOpen: (isModalOpen: boolean) => void;
     node: TreeNode;
-    tempHtmlContent: string;
-    setTempHtmlContent: (tempHtmlContent: string) => void;
+    html: string;
+    setHtml: (html: string) => void;
 }
 
 interface TabPanelProps {
@@ -46,9 +46,9 @@ function TabPanel(props: TabPanelProps) {
 export const EditorModal = ({
     isModalOpen,
     setIsModalOpen,
+    html,
+    setHtml,
     node,
-    tempHtmlContent,
-    setTempHtmlContent,
 }: EditorModalProps) => {
     const treeService = useTreeServiceContext();
     const editorRef = useRef<ReactQuill>(null);
@@ -64,7 +64,7 @@ export const EditorModal = ({
     }, [isModalOpen]);
 
     const handleEditorChange = useCallback((content: string) => {
-        setTempHtmlContent(content);
+        setHtml(content);
     }, []);
 
     const handleClose = useCallback(() => {
@@ -72,9 +72,9 @@ export const EditorModal = ({
     }, []);
 
     const handleSave = useCallback(() => {
-        treeService.editNodeHtml(node.id, tempHtmlContent);
+        setHtml(html);
         setIsModalOpen(false);
-    }, [node.id, tempHtmlContent, treeService]);
+    }, [node.id, html, treeService]);
 
     const handleTabChange = useCallback((_event: React.SyntheticEvent, newValue: number) => {
         setTabValue(newValue);
@@ -92,7 +92,7 @@ export const EditorModal = ({
                 <TabPanel value={tabValue} index={0}>
                     <ReactQuill
                         ref={editorRef}
-                        value={tempHtmlContent}
+                        value={html}
                         onChange={handleEditorChange}
                         modules={{
                             toolbar: [
@@ -102,14 +102,13 @@ export const EditorModal = ({
                             ],
                         }}
                     />
-
                 </TabPanel>
                 <TabPanel value={tabValue} index={1}>
                     <TextField
                         multiline
                         fullWidth
-                        value={tempHtmlContent}
-                        onChange={(e) => setTempHtmlContent(e.target.value)}
+                        value={html}
+                        onChange={(e) => setHtml(e.target.value)}
                     />
                 </TabPanel>
                 <Box sx={{ padding: 2, display: 'flex', justifyContent: 'flex-end' }}>
