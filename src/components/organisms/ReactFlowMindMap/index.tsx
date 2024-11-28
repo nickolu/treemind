@@ -14,6 +14,7 @@ import { TreeNode } from '@/components/molecules/TreeNode';
 import { useMindMapKeyboardEvents } from '@/components/molecules/MindMapKeyboardEvents/useMindMapKeyboardEvents';
 import { transformTreeToFlow } from './transformTreeToFlow';
 import { Box } from '@mui/material';
+import { MindMapLegend } from '@/components/molecules/MindMapLegend';
 
 interface ReactFlowMindMapProps {
   treeData: TreeNode;
@@ -32,13 +33,52 @@ export function ReactFlowMindMap({ treeData }: ReactFlowMindMapProps) {
 
   const stringifiedTreeData = JSON.stringify(treeData);
 
+  // Function to get all descendant node IDs for a given node
+  const getDescendantIds = useCallback((nodeId: string): string[] => {
+    const childEdges = edges.filter(edge => edge.source === nodeId);
+    const childIds = childEdges.map(edge => edge.target);
+    const descendantIds = [...childIds];
+
+    childIds.forEach(childId => {
+      descendantIds.push(...getDescendantIds(childId));
+    });
+
+    return descendantIds;
+  }, [edges]);
+
+  // Handle node movement to include subtree
+  const onNodeDragStop = useCallback((event: React.MouseEvent, node: TreeNode) => {
+    const descendantIds = getDescendantIds(node.id);
+    const draggedNode = nodes.find(n => n.id === node.id);
+    if (!draggedNode) return;
+
+    // Calculate the change in position
+    const dx = draggedNode.position.x - initialNodes.find(n => n.id === node.id)!.position.x;
+    const dy = draggedNode.position.y - initialNodes.find(n => n.id === node.id)!.position.y;
+
+    // Update positions of all descendant nodes
+    setNodes(nds =>
+      nds.map(n => {
+        if (descendantIds.includes(n.id)) {
+          return {
+            ...n,
+            position: {
+              x: n.position.x + dx,
+              y: n.position.y + dy,
+            },
+          };
+        }
+        return n;
+      })
+    );
+  }, [nodes, edges, initialNodes, getDescendantIds, setNodes]);
+
   useMindMapKeyboardEvents();
 
   useEffect(() => {
     const { nodes: newNodes, edges: newEdges } = transformTreeToFlow(treeData);
     setNodes(newNodes);
     setEdges(newEdges);
-    // Center the view after nodes are updated
     setTimeout(() => {
       reactFlowInstance?.fitView({ padding: 0.2 });
     }, 0);
@@ -55,6 +95,7 @@ export function ReactFlowMindMap({ treeData }: ReactFlowMindMapProps) {
         edges={edges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
+        onNodeDragStop={onNodeDragStop}
         onInit={onInit}
         nodeTypes={nodeTypes}
         fitView
@@ -67,6 +108,7 @@ export function ReactFlowMindMap({ treeData }: ReactFlowMindMapProps) {
       >
         <Background />
         <Controls />
+        <MindMapLegend />
       </ReactFlow>
     </Box>
   );

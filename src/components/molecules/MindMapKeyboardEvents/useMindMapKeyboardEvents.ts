@@ -3,6 +3,7 @@ import {useMindMapStateContext} from '@/components/organisms/MindMapState/useMin
 import {useTreeServiceContext} from '@/components/organisms/TreeService/useTreeServiceContext';
 import {useEffect} from 'react';
 import {TreeNode} from '@/components/molecules/TreeNode';
+import {useAiGeneratedNodes} from '../AiGeneratedNodes/useAiGeneratedNodes';
 
 type KeyboardHandlerProps = {
   selectedNode: TreeNode | null;
@@ -28,6 +29,11 @@ export function useMindMapKeyboardEvents() {
   const selectedParentNodeId =
     selectedNode?.parentId ?? treeService.tree.root.id;
 
+  const {generateNodes, isLoading} = useAiGeneratedNodes(
+    treeService,
+    selectedNode,
+  );
+
   // Handle node editing events (Enter, Tab, Escape)
   const handleEditingEvents = (e: KeyboardEvent) => {
     if (e.key === 'Tab' || e.key === 'Escape' || e.key === 'Enter') {
@@ -46,7 +52,10 @@ export function useMindMapKeyboardEvents() {
     }: KeyboardHandlerProps,
   ) => {
     e.preventDefault();
-    if (e.key === 'Enter' && selectedParentNodeId) {
+    if ((e.altKey || e.metaKey) && e.code === 'Space') {
+      console.log('Triggering AI generation', { altKey: e.altKey, metaKey: e.metaKey, code: e.code, key: e.key });
+      generateNodes();
+    } else if (e.key === 'Enter' && selectedParentNodeId) {
       const newNode = treeService.insertNode(selectedParentNodeId, '');
       setSelectedNodeId(newNode.id);
     } else if (e.key === 'Tab' && selectedNode) {
@@ -125,6 +134,14 @@ export function useMindMapKeyboardEvents() {
     if (!areKeyboardEventsEnabled) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
+      console.log('Key event:', { 
+        key: e.key, 
+        code: e.code, 
+        altKey: e.altKey, 
+        metaKey: e.metaKey, 
+        isEditing: isNodeBeingEdited 
+      });
+
       if (isNodeBeingEdited) {
         handleEditingEvents(e);
         return;
@@ -145,7 +162,11 @@ export function useMindMapKeyboardEvents() {
       };
 
       // Handle different keyboard events
-      if (e.key === 'Enter' || e.key === 'Tab') {
+      if (
+        e.key === 'Enter' ||
+        e.key === 'Tab' ||
+        ((e.altKey || e.metaKey) && e.code === 'Space')
+      ) {
         handleNodeCreation(e, handlerProps);
       } else if (e.key === 'Delete' || e.key === 'Backspace') {
         handleNodeDeletion(e, handlerProps);
@@ -153,7 +174,8 @@ export function useMindMapKeyboardEvents() {
         ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)
       ) {
         handleNavigation(e, handlerProps);
-      } else {
+      } else if (!e.altKey && !e.metaKey && !e.ctrlKey && e.key.length === 1) {
+        // Only enter edit mode for regular character keys
         setIsNodeBeingEdited(true);
       }
     };

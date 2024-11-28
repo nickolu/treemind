@@ -55,10 +55,19 @@ export const MindMapNode: React.FC<{
       setAreKeyboardEventsEnabled(!isModalOpen);
     }, [isModalOpen])
 
-    const handleOpen = useCallback(() => {
-      setIsNodeBeingEdited(false);
-      setIsModalOpen(true);
-    }, [setIsNodeBeingEdited]);
+    const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === 'Escape' || e.key === 'Enter') {
+        console.log('handleKeyDown');
+        e.preventDefault();
+        e.stopPropagation();
+        setIsNodeBeingEdited(false);
+        setHasChanged(false);
+
+        if (e.key === 'Enter') {
+          textEditorRef.current?.blur();
+        }
+      }
+    }, []);
 
     const handleTextChange = useCallback((newText: string) => {
       setHasChanged(true);
@@ -82,6 +91,10 @@ export const MindMapNode: React.FC<{
         tabIndex={0}
         onFocus={() => {
           setSelectedNodeId(treeNode.id)
+        }}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
         }}
         onBlur={() => setIsNodeBeingEdited(false)}
         sx={{
@@ -110,13 +123,14 @@ export const MindMapNode: React.FC<{
                 event.target.select();
               }}
               onBlur={handleBlur}
+              onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => handleKeyDown(e)}
             />
           ) : (
-            <div onClick={() => setIsNodeBeingEdited(true)}><NodeHtmlRenderer html={html} /></div>
+            <div onDoubleClick={() => setIsNodeBeingEdited(true)}><NodeHtmlRenderer html={html} /></div>
           )}
         </div>
 
-        <NodeControls onClickEdit={handleOpen} />
+        {/* <NodeControls onClickEdit={handleOpen} /> */}
         <EditorModal
           isModalOpen={isModalOpen}
           node={treeNode}
