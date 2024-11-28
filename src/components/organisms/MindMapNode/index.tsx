@@ -4,10 +4,11 @@ import { TreeService } from '@/types/tree';
 import { Box } from '@mui/material';
 import { useMindMapStateContext } from '@/components/organisms/MindMapState/useMindMapStateContext';
 import { TreeNode } from '@/components/molecules/TreeNode';
-import { NodeContent } from '@/components/molecules/NodeContent';
 import { NodeControls } from '@/components/molecules/NodeControls';
 import { EditorModal } from '@/components/molecules/EditorModal';
 import { parseTextFromHtml } from '@/components/atoms/parseTextFromHtml';
+import { NodeTextEditor } from '@/components/atoms/NodeTextEditor';
+import { NodeHtmlRenderer } from '@/components/atoms/NodeHtmlRenderer';
 
 export const MindMapNode: React.FC<{
   treeNode: TreeNode;
@@ -82,17 +83,21 @@ export const MindMapNode: React.FC<{
           minHeight: 50,
         }}
       >
-        <NodeContent
-          isNodeBeingEdited={isNodeBeingEdited}
-          treeNode={treeNode}
-          setIsNodeBeingEdited={setIsNodeBeingEdited}
-          setText={setText}
-          text={text}
-          textEditorRef={textEditorRef}
-          selectedNodeId={selectedNodeId}
-          setHtml={updateHtml}
-          html={html}
-        />
+
+        <div>
+          {isNodeBeingEdited && selectedNodeId === treeNode.id ? (
+            <NodeTextEditor
+              textEditorRef={textEditorRef}
+              text={text}
+              setText={setText}
+              setHtml={setHtml}
+              setIsNodeBeingEdited={setIsNodeBeingEdited}
+            />
+          ) : (
+            <div onClick={() => setIsNodeBeingEdited(true)}><NodeHtmlRenderer html={html} /></div>
+          )}
+        </div>
+
         <NodeControls onClickEdit={handleOpen} />
         <EditorModal
           isModalOpen={isModalOpen}
