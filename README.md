@@ -1,45 +1,36 @@
-# TreeMind
+This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
-This is a work in progress. You can feel free to download and try it out but don't expect it to work. 
+## Getting Started
 
-To Do:
+First, run the development server:
 
-- [ ] Unit Tests
-- [ ] Save tree to a file
-  - [ ] .json format
-  - [ ] .mm format
-- [ ] Load from file
-  - [ ] .mm format
-  - [ ] .json format
-- [ ] drag and drop nodes
-- [ ] render node links
-- [ ] anti-collision physics
-- [ ] style settings
-- [ ] node flags
-- [ ] delete confirmation
-- [ ] floating tree (multiple roots)
-- [ ] keyboard bindings
-- [ ] notes view
+```bash
+npm run dev
+# or
+yarn dev
+# or
+pnpm dev
+# or
+bun dev
+```
 
-Done: 
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-- [x] Create a tree of nodes
-- [x] Html editable nodes
-- [x] Wysiwyg editable nodes (thanks React-Quill)
-- [x] Delete nodes
+You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
-# Create React App
+This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+## Learn More
 
-## Available Scripts
+To learn more about Next.js, take a look at the following resources:
 
-In the project directory, you can run:
+- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
+- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
 
-### `yarn start`
+You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+## Deploy on Vercel
 
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+
+Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.

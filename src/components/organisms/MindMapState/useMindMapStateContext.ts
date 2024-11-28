@@ -1,3 +1,4 @@
+"use client";
 import {useContext} from 'react';
 import {MindMapStateContext} from '@/components/organisms/MindMapState/MindMapStateContext';
 

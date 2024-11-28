@@ -1,3 +1,4 @@
+'use client';
 import {useMindMapStateContext} from '@/components/organisms/MindMapState/useMindMapStateContext';
 import {useTreeServiceContext} from '@/components/organisms/TreeService/useTreeServiceContext';
 import {useEffect} from 'react';

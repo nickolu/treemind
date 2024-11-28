@@ -1,3 +1,4 @@
+'use client';
 import {useContext} from 'react';
 import {TreeServiceContext} from '@/components/organisms/TreeService/TreeServiceContext';
 

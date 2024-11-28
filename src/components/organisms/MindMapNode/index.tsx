@@ -1,3 +1,4 @@
+"use client";
 import 'react-quill/dist/quill.snow.css';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Box, TextField } from '@mui/material';
@@ -92,7 +93,6 @@ export const MindMapNode: React.FC<{
           minHeight: 50,
         }}
       >
-        {text}
         <div>
           {isNodeBeingEdited && selectedNodeId === treeNode.id ? (
             <TextField

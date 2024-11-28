@@ -1,62 +1,37 @@
 {
-  "name": "mindmap-js",
+  "name": "treemind",
   "version": "0.1.0",
   "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
   "dependencies": {
     "@emotion/react": "^11.13.5",
     "@emotion/styled": "^11.13.5",
     "@mui/icons-material": "^6.1.8",
     "@mui/material": "^6.1.8",
-    "@observablehq/runtime": "observablehq/runtime",
-    "@testing-library/jest-dom": "^5.16.4",
-    "@testing-library/react": "^13.3.0",
-    "@testing-library/user-event": "^13.5.0",
-    "d3": "^7.6.1",
-    "lodash": "^4.17.21",
+    "next": "15.0.3",
+    "openai": "^4.73.1",
     "prettier": "^3.3.3",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
+    "react": "19.0.0-rc-66855b96-20241106",
+    "react-dom": "19.0.0-rc-66855b96-20241106",
     "react-faux-dom": "^4.5.0",
     "react-quill": "^2.0.0",
+    "react-quill-new": "^3.3.3",
     "react-scripts": "5.0.1",
     "reactflow": "^11.11.4",
     "styled-components": "^5.3.5",
-    "uuid": "^9.0.0",
-    "web-vitals": "^2.1.4"
+    "uuid": "^9.0.0"
   },
-  "scripts": {
-    "start": "craco start",
-    "build": "craco build",
-    "test": "craco test",
-    "eject": "react-scripts eject"
-  },
-  "eslintConfig": {
-    "extends": [
-      "react-app",
-      "react-app/jest"
-    ]
-  },
-  "browserslist": {
-    "production": [
-      ">0.2%",
-      "not dead",
-      "not op_mini all"
-    ],
-    "development": [
-      "last 1 chrome version",
-      "last 1 firefox version",
-      "last 1 safari version"
-    ]
-  },
-  "main": "index.tsx",
-  "author": "Nick Cunningham <nick.cunningham@leadcrunch.ai>",
-  "license": "MIT",
   "devDependencies": {
-    "@craco/craco": "^7.1.0",
-    "@types/node": "^22.9.4",
-    "@types/react": "^18.3.12",
-    "@types/react-dom": "^18.3.1",
-    "@types/uuid": "^8.3.4",
-    "typescript": "^4.9.5"
+    "@types/node": "^20",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "eslint": "^8",
+    "eslint-config-next": "15.0.3",
+    "typescript": "^5"
   }
 }

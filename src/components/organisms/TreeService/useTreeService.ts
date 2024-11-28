@@ -1,3 +1,4 @@
+"use client";
 import {useCallback, useReducer} from 'react';
 import {TreeService} from '@/types/tree';
 import {TreeNode} from '@/components/molecules/TreeNode';

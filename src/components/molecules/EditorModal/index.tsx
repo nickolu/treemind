@@ -1,8 +1,10 @@
+"use client";
 import { TreeNode } from "@/components/molecules/TreeNode";
 import { useCallback, useEffect, useRef, useState } from "react";
-import ReactQuill from "react-quill";
+import ReactQuill from "react-quill-new";
 import { Box, Button, ButtonGroup, Modal, styled, Tab, Tabs, TextField } from "@mui/material";
 import { useTreeServiceContext } from "@/components/organisms/TreeService/useTreeServiceContext";
+import 'react-quill-new/dist/quill.snow.css';
 
 
 const StyledModal = styled(Modal)({
@@ -109,7 +111,7 @@ export const EditorModal = ({
                         multiline
                         fullWidth
                         value={html}
-                        onChange={(e) => setHtml(e.target.value)}
+                        onChange={(e) => handleEditorChange(e.target.value)}
                     />
                 </TabPanel>
                 <Box sx={{ padding: 2, display: 'flex', justifyContent: 'flex-end' }}>
