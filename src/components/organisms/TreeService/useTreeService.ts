@@ -2,16 +2,12 @@
 import {useCallback, useReducer} from 'react';
 import {TreeNode} from '@/domain/TreeNode';
 import {TreeState} from '@/domain/Tree';
-import { loadMindMapFromLocalStorage } from '@/app/utils/localStorageOperations';
+import {loadMindMapFromLocalStorage} from '@/app/utils/localStorageOperations';
 
 enum TreeAction {
   INSERT = 'INSERT',
   EDIT_HTML = 'EDIT_HTML',
   DELETE = 'DELETE',
-}
-
-interface TreeState {
-  root: TreeNode;
 }
 
 interface TreeReducerValue {
@@ -108,11 +104,13 @@ function treeReducer(state: TreeState, action: TreeActionType): TreeState {
 }
 
 const initialState: TreeState = {
-  root: loadMindMapFromLocalStorage() || new TreeNode({
-    children: [],
-    parentId: null,
-    html: 'New Mindmap',
-  }),
+  root:
+    loadMindMapFromLocalStorage() ||
+    new TreeNode({
+      children: [],
+      parentId: null,
+      html: 'New Mindmap',
+    }),
 };
 
 export function useTreeService(): TreeService {
