@@ -1,6 +1,6 @@
 "use client";
 import { Box } from '@mui/material';
-import { ReactFlowMindMap } from '@/components/templates/ReactFlowMindMap';
+import { ReactFlowMindMap } from '@/components/organisms/ReactFlowMindMap';
 import { useTreeService } from '@/components/organisms/TreeService/useTreeService';
 import { TreeServiceContext } from '@/components/organisms/TreeService/TreeServiceContext';
 import { MindMapStateContext } from '@/components/organisms/MindMapState/MindMapStateContext';
