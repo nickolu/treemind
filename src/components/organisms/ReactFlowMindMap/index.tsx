@@ -18,6 +18,7 @@ import { Box, Button, Stack } from '@mui/material';
 import { MindMapLegend } from '@/components/molecules/MindMapLegend';
 import { useMindMapStateContext } from '@/components/organisms/MindMapState/useMindMapStateContext';
 import { saveMindMapToFile, loadMindMapFromFile } from '@/app/utils/fileOperations';
+import { saveMindMapToLocalStorage, loadMindMapFromLocalStorage } from '@/app/utils/localStorageOperations';
 
 interface ReactFlowMindMapProps {
   treeData: TreeNode;
@@ -97,6 +98,10 @@ export function ReactFlowMindMap({ treeData }: ReactFlowMindMapProps) {
       reactFlowInstance?.fitView({ padding: 0.2 });
     }, 0);
   }, [stringifiedTreeData, setNodes, setEdges, treeData, reactFlowInstance, useAutoLayout]);
+
+  useEffect(() => {
+    saveMindMapToLocalStorage(treeData);
+  }, [stringifiedTreeData]);
 
   const onInit = useCallback((instance: ReactFlowInstance) => {
     setReactFlowInstance(instance);
