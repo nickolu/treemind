@@ -1,4 +1,4 @@
-import {TreeState} from '@/components/organisms/Tree';
+import {TreeState} from '@/domain/Tree';
 import {TreeNode} from '@/components/molecules/TreeNode';
 
 export interface TreeService {
