@@ -8,6 +8,10 @@ export interface MindMapState {
   setIsNodeBeingEdited: (isNodeBeingEdited: boolean) => void;
   areKeyboardEventsEnabled: boolean;
   setAreKeyboardEventsEnabled: (areKeyboardEventsEnabled: boolean) => void;
+  isEditorModalOpen: boolean;
+  setIsEditorModalOpen: (isEditorModalOpen: boolean) => void;
+  useAutoLayout: boolean;
+  setUseAutoLayout: (useAutoLayout: boolean) => void;
 }
 
 export function useMindMapState(): MindMapState {
@@ -15,6 +19,8 @@ export function useMindMapState(): MindMapState {
     useState(true);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [isNodeBeingEdited, setIsNodeBeingEdited] = useState<boolean>(false);
+  const [isEditorModalOpen, setIsEditorModalOpen] = useState<boolean>(false);
+  const [useAutoLayout, setUseAutoLayout] = useState<boolean>(true);
 
   return {
     selectedNodeId,
@@ -23,5 +29,9 @@ export function useMindMapState(): MindMapState {
     setIsNodeBeingEdited,
     areKeyboardEventsEnabled,
     setAreKeyboardEventsEnabled,
+    isEditorModalOpen,
+    setIsEditorModalOpen,
+    useAutoLayout,
+    setUseAutoLayout,
   };
 }

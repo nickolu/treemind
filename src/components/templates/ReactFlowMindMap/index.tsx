@@ -1,5 +1,5 @@
 "use client";
-import { memo, useCallback, useEffect, useState } from 'react';
+import { KeyboardEvent, memo, useCallback, useEffect, useState } from 'react';
 import ReactFlow, {
   Controls,
   Background,
@@ -7,6 +7,7 @@ import ReactFlow, {
   useEdgesState,
   ConnectionMode,
   ReactFlowInstance,
+  Node
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { ReactFlowMindMapNode } from '@/components/molecules/ReactFlowMindMapNode';
@@ -15,6 +16,7 @@ import { useMindMapKeyboardEvents } from '@/components/molecules/MindMapKeyboard
 import { transformTreeToFlow } from './transformTreeToFlow';
 import { Box } from '@mui/material';
 import { MindMapLegend } from '@/components/molecules/MindMapLegend';
+import { useMindMapStateContext } from '@/components/organisms/MindMapState/useMindMapStateContext';
 
 interface ReactFlowMindMapProps {
   treeData: TreeNode;
@@ -25,7 +27,8 @@ const nodeTypes = {
 };
 
 export function ReactFlowMindMap({ treeData }: ReactFlowMindMapProps) {
-  const { nodes: initialNodes, edges: initialEdges } = transformTreeToFlow(treeData);
+  const { useAutoLayout } = useMindMapStateContext();
+  const { nodes: initialNodes, edges: initialEdges } = transformTreeToFlow(treeData, 0, 0, 0, [], [], useAutoLayout);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
@@ -47,7 +50,7 @@ export function ReactFlowMindMap({ treeData }: ReactFlowMindMapProps) {
   }, [edges]);
 
   // Handle node movement to include subtree
-  const onNodeDragStop = useCallback((event: React.MouseEvent, node: TreeNode) => {
+  const onNodeDragStop = useCallback((event: React.MouseEvent, node: Node) => {
     const descendantIds = getDescendantIds(node.id);
     const draggedNode = nodes.find(n => n.id === node.id);
     if (!draggedNode) return;
@@ -76,13 +79,22 @@ export function ReactFlowMindMap({ treeData }: ReactFlowMindMapProps) {
   useMindMapKeyboardEvents();
 
   useEffect(() => {
-    const { nodes: newNodes, edges: newEdges } = transformTreeToFlow(treeData);
+    const { nodes: newNodes, edges: newEdges } = transformTreeToFlow(
+      treeData,
+      0,
+      0,
+      0,
+      [],
+      [],
+      useAutoLayout,
+      nodes
+    );
     setNodes(newNodes);
     setEdges(newEdges);
     setTimeout(() => {
       reactFlowInstance?.fitView({ padding: 0.2 });
     }, 0);
-  }, [stringifiedTreeData, setNodes, setEdges, treeData, reactFlowInstance]);
+  }, [stringifiedTreeData, setNodes, setEdges, treeData, reactFlowInstance, useAutoLayout]);
 
   const onInit = useCallback((instance: ReactFlowInstance) => {
     setReactFlowInstance(instance);
@@ -105,6 +117,11 @@ export function ReactFlowMindMap({ treeData }: ReactFlowMindMapProps) {
           style: { stroke: '#333', strokeWidth: 2 }
         }}
         connectionMode={ConnectionMode.Strict}
+        onKeyDown={(event: KeyboardEvent<HTMLDivElement>) => {
+          if (event.key === 'ArrowUp' || event.key === 'ArrowDown' || event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+            event.stopPropagation();
+          }
+        }}
       >
         <Background />
         <Controls />

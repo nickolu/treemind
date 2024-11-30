@@ -13,13 +13,6 @@
             "titleBar.activeBackground": "#FFFFFF",
             "titleBar.activeForeground": "#000000"
         },
-        "[javascript]": {
-            "editor.defaultFormatter": "esbenp.prettier-vscode",
-        },
-        "[javascriptreact]": {
-            "editor.defaultFormatter": "esbenp.prettier-vscode"
-        },
-        
         "javascript.validate.enable": false,  
     }
 }
