@@ -1,5 +1,5 @@
-import {TreeService} from '@/types/tree';
-import {TreeNode} from '../TreeNode';
+import {TreeService} from '@/components/organisms/TreeService/useTreeService';
+import {TreeNode} from '../../../domain/TreeNode';
 import {useEffect, useState} from 'react';
 import {getMindMapContextForNode} from '@/app/utils/getMindMapContextForNode';
 

@@ -11,7 +11,7 @@ import ReactFlow, {
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { ReactFlowMindMapNode } from '@/components/molecules/ReactFlowMindMapNode';
-import { TreeNode } from '@/components/molecules/TreeNode';
+import { TreeNode } from '@/domain/TreeNode';
 import { useMindMapKeyboardEvents } from '@/components/molecules/MindMapKeyboardEvents/useMindMapKeyboardEvents';
 import { transformTreeToFlow } from './transformTreeToFlow';
 import { Box, Button, Stack } from '@mui/material';

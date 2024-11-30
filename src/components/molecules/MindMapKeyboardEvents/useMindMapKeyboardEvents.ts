@@ -2,7 +2,7 @@
 import {useMindMapStateContext} from '@/components/organisms/MindMapState/useMindMapStateContext';
 import {useTreeServiceContext} from '@/components/organisms/TreeService/useTreeServiceContext';
 import {useCallback, useEffect} from 'react';
-import {TreeNode} from '@/components/molecules/TreeNode';
+import {TreeNode} from '@/domain/TreeNode';
 import {useAiGeneratedNodes} from '../AiGeneratedNodes/useAiGeneratedNodes';
 
 type KeyboardHandlerProps = {

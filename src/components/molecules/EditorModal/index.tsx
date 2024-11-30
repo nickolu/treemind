@@ -1,5 +1,5 @@
 "use client";
-import { TreeNode } from "@/components/molecules/TreeNode";
+import { TreeNode } from "@/domain/TreeNode";
 import { useCallback, useEffect, useRef, useState } from "react";
 import ReactQuill from "react-quill-new";
 import { Box, Button, ButtonGroup, Modal, styled, Tab, Tabs, TextField } from "@mui/material";

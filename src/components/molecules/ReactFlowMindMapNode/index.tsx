@@ -2,7 +2,7 @@ import { Handle, NodeProps, Position } from "reactflow";
 import { Box } from "@mui/material";
 import { useTreeServiceContext } from "@/components/organisms/TreeService/useTreeServiceContext";
 import { MindMapNode } from "@/components/organisms/MindMapNode";
-import { TreeNode } from "@/components/molecules/TreeNode";
+import { TreeNode } from "@/domain/TreeNode";
 import { useEffect, useState } from "react";
 
 

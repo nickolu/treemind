@@ -1,7 +1,7 @@
-"use client";
+'use client';
 import {useCallback, useReducer} from 'react';
-import {TreeService} from '@/types/tree';
-import {TreeNode} from '@/components/molecules/TreeNode';
+import {TreeNode} from '@/domain/TreeNode';
+import {TreeState} from '@/domain/Tree';
 
 enum TreeAction {
   INSERT = 'INSERT',
@@ -204,4 +204,13 @@ export function useTreeService(): TreeService {
     editNodeHtml,
     deleteNode,
   };
+}
+export interface TreeService {
+  tree: TreeState;
+  insertNode: (parentId: string, html: string) => TreeNode;
+  editNodeHtml: (nodeId: string, html: string) => void;
+  deleteNode: (nodeId: string) => void;
+  getNodeById: (nodeId: string) => TreeNode | undefined;
+  getParentNode: (node: TreeNode) => TreeNode;
+  findNodeIndex: (node: TreeNode) => number;
 }

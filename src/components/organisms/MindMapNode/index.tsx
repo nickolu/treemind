@@ -3,9 +3,9 @@ import 'react-quill/dist/quill.snow.css';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Box, TextField } from '@mui/material';
 import { useMindMapStateContext } from '@/components/organisms/MindMapState/useMindMapStateContext';
-import { TreeNode } from '@/components/molecules/TreeNode';
+import { TreeNode } from '@/domain/TreeNode';
 import { EditorModal } from '@/components/molecules/EditorModal';
-import { parseTextFromHtml } from '@/components/atoms/parseTextFromHtml';
+import { parseTextFromHtml } from '@/app/utils/parseTextFromHtml';
 import { NodeHtmlRenderer } from '@/components/atoms/NodeHtmlRenderer';
 import { useTreeServiceContext } from '@/components/organisms/TreeService/useTreeServiceContext';
 

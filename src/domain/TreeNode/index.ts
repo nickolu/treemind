@@ -1,4 +1,4 @@
-import {parseTextFromHtml} from '@/components/atoms/parseTextFromHtml';
+import {parseTextFromHtml} from '@/app/utils/parseTextFromHtml';
 import {v4 as uuidv4} from 'uuid';
 
 export type TreeNodeJson = {

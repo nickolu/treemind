@@ -1,4 +1,4 @@
-import {TreeNode} from '@/components/molecules/TreeNode';
+import {TreeNode} from '@/domain/TreeNode';
 import {Tree, TreeState} from '@/domain/Tree';
 
 export function getMindMapContextForNode(

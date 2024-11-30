@@ -1,5 +1,5 @@
 import {Node, Edge} from 'reactflow';
-import {TreeNode} from '@/components/molecules/TreeNode';
+import {TreeNode} from '@/domain/TreeNode';
 
 // Calculate the height needed for a subtree
 const calculateSubtreeHeight = (node: TreeNode): number => {
