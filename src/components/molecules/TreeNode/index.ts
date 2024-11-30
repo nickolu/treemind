@@ -4,7 +4,7 @@ import {v4 as uuidv4} from 'uuid';
 export type TreeNodeJson = {
   id?: string;
   parentId: string | null;
-  children: TreeNode[];
+  children: TreeNodeJson[];
   html: string;
 };
 
@@ -17,7 +17,7 @@ export class TreeNode {
   constructor({id, children, parentId, html}: TreeNodeJson) {
     this.id = id ?? uuidv4();
     this.parentId = parentId;
-    this.children = children;
+    this.children = children.map((child) => new TreeNode(child));
     this._html = html;
   }
 
@@ -41,5 +41,14 @@ export class TreeNode {
 
   set text(text: string) {
     this._html = `<div>${text}</div>`;
+  }
+
+  json(): TreeNodeJson {
+    return {
+      id: this.id,
+      parentId: this.parentId,
+      children: this.children.map((child) => child.json()),
+      html: this._html,
+    };
   }
 }

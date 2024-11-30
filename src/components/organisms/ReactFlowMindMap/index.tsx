@@ -14,9 +14,10 @@ import { ReactFlowMindMapNode } from '@/components/molecules/ReactFlowMindMapNod
 import { TreeNode } from '@/components/molecules/TreeNode';
 import { useMindMapKeyboardEvents } from '@/components/molecules/MindMapKeyboardEvents/useMindMapKeyboardEvents';
 import { transformTreeToFlow } from './transformTreeToFlow';
-import { Box } from '@mui/material';
+import { Box, Button, Stack } from '@mui/material';
 import { MindMapLegend } from '@/components/molecules/MindMapLegend';
 import { useMindMapStateContext } from '@/components/organisms/MindMapState/useMindMapStateContext';
+import { saveMindMapToFile, loadMindMapFromFile } from '@/app/utils/fileOperations';
 
 interface ReactFlowMindMapProps {
   treeData: TreeNode;
@@ -56,8 +57,9 @@ export function ReactFlowMindMap({ treeData }: ReactFlowMindMapProps) {
     if (!draggedNode) return;
 
     // Calculate the change in position
-    const dx = draggedNode.position.x - initialNodes.find(n => n.id === node.id)!.position.x;
-    const dy = draggedNode.position.y - initialNodes.find(n => n.id === node.id)!.position.y;
+    const initialNode = initialNodes.find(n => n.id === node.id);
+    const dx = draggedNode.position.x - (initialNode?.position.x ?? 0);
+    const dy = draggedNode.position.y - (initialNode?.position.y ?? 0);
 
     // Update positions of all descendant nodes
     setNodes(nds =>
@@ -100,8 +102,42 @@ export function ReactFlowMindMap({ treeData }: ReactFlowMindMapProps) {
     setReactFlowInstance(instance);
   }, []);
 
+  const handleSave = useCallback(() => {
+    saveMindMapToFile(treeData);
+  }, [treeData]);
+
+  const handleLoad = useCallback(async () => {
+    const loadedTree = await loadMindMapFromFile();
+    if (loadedTree) {
+      // Update the tree state through the service
+      // This will trigger a re-render with the new tree data
+      const { nodes: newNodes, edges: newEdges } = transformTreeToFlow(
+        loadedTree,
+        0,
+        0,
+        0,
+        [],
+        [],
+        useAutoLayout
+      );
+      setNodes(newNodes);
+      setEdges(newEdges);
+      setTimeout(() => {
+        reactFlowInstance?.fitView({ padding: 0.2 });
+      }, 0);
+    }
+  }, [useAutoLayout, reactFlowInstance, setNodes, setEdges]);
+
   return (
-    <Box sx={{ width: '100%', height: 'calc(100vh - 64px)', border: '1px solid #ddd' }}>
+    <Box sx={{ width: '100%', height: 'calc(100vh - 64px)', position: 'relative' }}>
+      <Stack direction="row" spacing={2} sx={{ position: 'absolute', top: 20, right: 20, zIndex: 1000 }}>
+        <Button variant="contained" onClick={handleSave}>
+          Save Mindmap
+        </Button>
+        <Button variant="contained" onClick={handleLoad}>
+          Load Mindmap
+        </Button>
+      </Stack>
       <ReactFlow
         nodes={nodes}
         edges={edges}
