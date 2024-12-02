@@ -29,7 +29,7 @@ const nodeTypes = {
 };
 
 export function ReactFlowMindMap({ treeData }: ReactFlowMindMapProps) {
-  const { useAutoLayout } = useMindMapStateContext();
+  const { useAutoLayout, selectedNodeId } = useMindMapStateContext();
   const { nodes: initialNodes, edges: initialEdges } = transformTreeToFlow(treeData, 0, 0, 0, [], [], useAutoLayout);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
@@ -94,14 +94,33 @@ export function ReactFlowMindMap({ treeData }: ReactFlowMindMapProps) {
     );
     setNodes(newNodes);
     setEdges(newEdges);
-    setTimeout(() => {
-      reactFlowInstance?.fitView({ padding: 0.2 });
-    }, 0);
-  }, [stringifiedTreeData, setNodes, setEdges, treeData, reactFlowInstance, useAutoLayout]);
+  }, [stringifiedTreeData, setNodes, setEdges, treeData, useAutoLayout]);
+
+  useEffect(() => {
+    if (!reactFlowInstance) return;
+    reactFlowInstance.fitView({ padding: 0.2 });
+  }, [reactFlowInstance]);
 
   useEffect(() => {
     saveMindMapToLocalStorage(treeData);
   }, [stringifiedTreeData]);
+
+  useEffect(() => {
+    if (!reactFlowInstance || !selectedNodeId) return;
+
+    const selectedNode = nodes.find(node => node.id === selectedNodeId);
+    if (selectedNode) {
+      // Get the current viewport
+      const { zoom } = reactFlowInstance.getViewport();
+
+      // Center on the selected node while maintaining zoom
+      reactFlowInstance.setCenter(
+        selectedNode.position.x,
+        selectedNode.position.y,
+        { zoom }
+      );
+    }
+  }, [selectedNodeId, nodes, reactFlowInstance]);
 
   const onInit = useCallback((instance: ReactFlowInstance) => {
     setReactFlowInstance(instance);
@@ -127,11 +146,8 @@ export function ReactFlowMindMap({ treeData }: ReactFlowMindMapProps) {
       );
       setNodes(newNodes);
       setEdges(newEdges);
-      setTimeout(() => {
-        reactFlowInstance?.fitView({ padding: 0.2 });
-      }, 0);
     }
-  }, [useAutoLayout, reactFlowInstance, setNodes, setEdges]);
+  }, [useAutoLayout, setNodes, setEdges]);
 
   return (
     <Box sx={{ width: '100%', height: 'calc(100vh - 64px)', position: 'relative' }}>
@@ -144,6 +160,7 @@ export function ReactFlowMindMap({ treeData }: ReactFlowMindMapProps) {
         </Button>
       </Stack>
       <ReactFlow
+        disableKeyboardA11y={true}
         nodes={nodes}
         edges={edges}
         onNodesChange={onNodesChange}
@@ -151,7 +168,6 @@ export function ReactFlowMindMap({ treeData }: ReactFlowMindMapProps) {
         onNodeDragStop={onNodeDragStop}
         onInit={onInit}
         nodeTypes={nodeTypes}
-        fitView
         defaultEdgeOptions={{
           type: 'smoothstep',
           animated: false,
