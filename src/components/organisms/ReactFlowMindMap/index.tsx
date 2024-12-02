@@ -109,11 +109,32 @@ export function ReactFlowMindMap({ treeData }: ReactFlowMindMapProps) {
     if (!reactFlowInstance || !selectedNodeId) return;
 
     const selectedNode = nodes.find(node => node.id === selectedNodeId);
-    if (selectedNode) {
-      // Get the current viewport
-      const { zoom } = reactFlowInstance.getViewport();
+    if (!selectedNode) return;
 
-      // Center on the selected node while maintaining zoom
+    // Get the current viewport
+    const viewport = reactFlowInstance.getViewport();
+    const { x: viewX, y: viewY, zoom } = viewport;
+
+    // Get the dimensions of the viewport from the container
+    const reactFlowBounds = document.querySelector('.react-flow')?.getBoundingClientRect();
+    if (!reactFlowBounds) return;
+
+    const viewportWidth = reactFlowBounds.width;
+    const viewportHeight = reactFlowBounds.height;
+
+    // Convert node position to screen coordinates
+    const nodeX = selectedNode.position.x * zoom + viewX;
+    const nodeY = selectedNode.position.y * zoom + viewY;
+
+    // Add padding (in pixels) to create a margin around the edges
+    const padding = 50;
+
+    // Check if the node is outside the viewport (accounting for padding)
+    const isOutsideX = nodeX < padding || nodeX > viewportWidth - padding;
+    const isOutsideY = nodeY < padding || nodeY > viewportHeight - padding;
+
+    if (isOutsideX || isOutsideY) {
+      // Only adjust the view if the node is outside the viewport
       reactFlowInstance.setCenter(
         selectedNode.position.x,
         selectedNode.position.y,
