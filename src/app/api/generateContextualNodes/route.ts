@@ -8,7 +8,7 @@ const openai = new OpenAI({
 });
 
 const prompt = (input: string) => {
-  return `Please suggest 3 additional nodes to add as children to the last node of the following mindmap: 
+  return `Please suggest some additional nodes (as many as mankes sense in context) to add as children to the last node of the following mindmap: 
 
   MIND MAP TREE:
   \`\`\`
@@ -19,13 +19,13 @@ const prompt = (input: string) => {
 
 {
   "nodes": [
-    'Suggestion 1',
-    'Suggestion 2',
-    'Suggestion 3'
+    "Suggestion 1",
+    "Suggestion 2",
+    "Suggestion 3"
   ]
 }
 
-please only include valid json in your response and no other comments and limit your response to three books. Also please don't wrap the JSON in backticks
+please only include valid json in your response and no other comments. Also please don't wrap the JSON in backticks
 `;
 };
 
