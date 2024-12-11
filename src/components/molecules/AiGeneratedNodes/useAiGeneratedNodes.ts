@@ -16,7 +16,7 @@ export function useAiGeneratedNodes(treeService: TreeService, node?: TreeNode) {
         treeService.insertNode(node.id, text);
       });
     }
-  }, [nodesText]);
+  }, [nodesText, node, treeService]);
 
   useEffect(() => {
     if (isLoading && node) {
@@ -34,7 +34,7 @@ export function useAiGeneratedNodes(treeService: TreeService, node?: TreeNode) {
         setLoadingNodeId(null);
       }
     };
-  }, [isLoading]);
+  }, [isLoading, node, treeService, loadingNodeId]);
 
   async function generateNodes() {
     if (!node) return;

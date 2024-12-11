@@ -244,5 +244,6 @@ export function useMindMapKeyboardEvents() {
     setIsNodeBeingEdited,
     setSelectedNodeId,
     treeService,
+    setIsEditorModalOpen
   ]);
 }

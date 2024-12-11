@@ -3,9 +3,6 @@ import { Box } from "@mui/material";
 import { useTreeServiceContext } from "@/components/organisms/TreeService/useTreeServiceContext";
 import { MindMapNode } from "@/components/organisms/MindMapNode";
 import { TreeNode } from "@/domain/TreeNode";
-import { useEffect, useState } from "react";
-
-
 
 export const ReactFlowMindMapNode = ({ data }: NodeProps<TreeNode>) => {
     const treeService = useTreeServiceContext();
@@ -16,8 +13,6 @@ export const ReactFlowMindMapNode = ({ data }: NodeProps<TreeNode>) => {
         html: data._html
     });
     const isRoot = treeNode.id === treeService.tree.root.id;
-    // const { nodesText: childNodesText, isLoading: areChildNodesLoading, generateNodes: generateChildNodes } = useAiGeneratedNodes(treeService, treeNode);
-
 
     return (
         <Box

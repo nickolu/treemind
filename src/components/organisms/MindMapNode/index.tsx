@@ -58,7 +58,7 @@ export const MindMapNode: React.FC<{
 
   useEffect(() => {
     setAreKeyboardEventsEnabled(!isModalOpen);
-  }, [isModalOpen]);
+  }, [isModalOpen, setAreKeyboardEventsEnabled]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -74,7 +74,7 @@ export const MindMapNode: React.FC<{
         }
       }
     },
-    [],
+    [setIsEditing],
   );
 
   const handleTextChange = useCallback((newText: string) => {
@@ -90,7 +90,7 @@ export const MindMapNode: React.FC<{
       treeService.editNodeHtml(treeNode.id, newHtml);
       setHasChanged(false);
     }
-  }, [hasChanged, text, treeNode.id, treeService]);
+  }, [hasChanged, text, treeNode.id, treeService, setIsEditing]);
 
   return (
     <Box
