@@ -1,5 +1,4 @@
 {
   "buildCommand": "next build",
   "ignoreCommand": "echo 'Skipping type checks and linting'",
-  "devCommand": "next dev"
 }
