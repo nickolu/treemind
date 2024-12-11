@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 'use client';
 import {useMindMapStateContext} from '@/components/organisms/MindMapState/useMindMapStateContext';
 import {useTreeServiceContext} from '@/components/organisms/TreeService/useTreeServiceContext';

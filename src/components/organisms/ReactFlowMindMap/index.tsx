@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 "use client";
 import { KeyboardEvent, memo, useCallback, useEffect, useState } from 'react';
 import ReactFlow, {
@@ -18,7 +19,7 @@ import { Box, Button, Stack } from '@mui/material';
 import { MindMapLegend } from '@/components/molecules/MindMapLegend';
 import { useMindMapStateContext } from '@/components/organisms/MindMapState/useMindMapStateContext';
 import { saveMindMapToFile, loadMindMapFromFile } from '@/app/utils/fileOperations';
-import { saveMindMapToLocalStorage, loadMindMapFromLocalStorage } from '@/app/utils/localStorageOperations';
+import { saveMindMapToLocalStorage } from '@/app/utils/localStorageOperations';
 
 interface ReactFlowMindMapProps {
   treeData: TreeNode;

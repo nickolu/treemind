@@ -14,12 +14,6 @@ export type MindMapContext = {
   previousNodeId: string | null;
 };
 
-type MindMapState =
-  | {value: 'idle'; context: MindMapContext}
-  | {value: 'selected'; context: MindMapContext}
-  | {value: 'editing'; context: MindMapContext}
-  | {value: 'generating'; context: MindMapContext};
-
 export const mindMapMachine = createMachine({
   id: 'mindMap',
   initial: 'selected',

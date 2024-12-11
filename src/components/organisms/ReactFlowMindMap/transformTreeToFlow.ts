@@ -14,16 +14,6 @@ const calculateSubtreeHeight = (node: TreeNode): number => {
 };
 
 const MIN_VERTICAL_SPACING = 70; // Increased minimum spacing between nodes
-const DEFAULT_NODE_HEIGHT = 50; // Default height if we can't measure the actual height
-
-const getNodeHeight = (nodeId: string): number => {
-  const element = document.querySelector(`[data-id="${nodeId}"]`);
-  if (element) {
-    const height = element.getAttribute('data-node-height');
-    return height ? parseFloat(height) : DEFAULT_NODE_HEIGHT;
-  }
-  return DEFAULT_NODE_HEIGHT;
-};
 
 // Get the average vertical spacing between siblings
 const getAverageSiblingSpacing = (nodes: Node[], parentId: string): number => {
