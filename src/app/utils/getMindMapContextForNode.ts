@@ -1,5 +1,5 @@
 import {TreeNode} from '@/domain/TreeNode';
-import {Tree, TreeState} from '@/domain/Tree';
+import {TreeState} from '@/domain/Tree';
 
 export function getMindMapContextForNode(
   tree: TreeState,
@@ -13,7 +13,7 @@ export function getMindMapContextForNode(
 
   const buildTreeText = (
     currentNode: TreeNode,
-    depth: number = 0,
+    depth = 0,
     parentStack: boolean[] = [],
   ): string => {
     let result = '';
