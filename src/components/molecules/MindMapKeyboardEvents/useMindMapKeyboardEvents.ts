@@ -17,7 +17,7 @@ type KeyboardHandlerProps = {
 
 function isMindMapNodeShortcut(e: KeyboardEvent): {[key: string]: boolean} {
   return {
-    generateChildNodes: (e.altKey || e.metaKey) && e.code === 'Space',
+    generateChildNodes: (e.altKey || e.metaKey) && e.code === 'Tab',
     insertChild: e.key === 'Tab',
     insertSibling: e.key === 'Enter',
     deleteNode: e.key === 'Delete' || e.key === 'Backspace',
@@ -244,6 +244,5 @@ export function useMindMapKeyboardEvents() {
     setIsNodeBeingEdited,
     setSelectedNodeId,
     treeService,
-    setIsEditorModalOpen
   ]);
 }

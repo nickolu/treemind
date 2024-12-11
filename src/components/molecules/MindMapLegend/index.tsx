@@ -16,7 +16,7 @@ import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 const keyboardShortcuts = [
   { key: 'Enter', description: 'Add sibling node' },
   { key: 'Tab', description: 'Add child node' },
-  { key: 'Alt/Option + Space', description: 'Generate AI nodes' },
+  { key: 'Alt/Option + Tab', description: 'Add some AI generated nodes' },
   { key: 'Delete/Backspace', description: 'Delete selected node' },
   { key: '↑/↓', description: 'Navigate between siblings' },
   { key: '←/→', description: 'Navigate parent/child nodes' },
