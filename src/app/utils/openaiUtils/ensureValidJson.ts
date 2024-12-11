@@ -74,7 +74,7 @@ async function ensureValidJson(
 async function ensureValidJsonWithRecursiveRetries(
   jsonString: string,
   objectProperties: object,
-  retries: number = 3
+  retries = 3
 ): Promise<object> {
   try {
     const result = await ensureValidJson(jsonString, objectProperties);
