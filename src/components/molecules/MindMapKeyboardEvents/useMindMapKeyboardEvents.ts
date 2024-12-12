@@ -80,12 +80,6 @@ export function useMindMapKeyboardEvents() {
     ) => {
       e.preventDefault();
       if (isMindMapNodeShortcut(e).generateChildNodes) {
-        console.log('Triggering AI generation', {
-          altKey: e.altKey,
-          metaKey: e.metaKey,
-          code: e.code,
-          key: e.key,
-        });
         generateNodes();
       } else if (
         isMindMapNodeShortcut(e).insertSibling &&
@@ -177,14 +171,6 @@ export function useMindMapKeyboardEvents() {
     if (!areKeyboardEventsEnabled) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      console.log('Key event:', {
-        key: e.key,
-        code: e.code,
-        altKey: e.altKey,
-        metaKey: e.metaKey,
-        isEditing: isNodeBeingEdited,
-      });
-
       if (isNodeBeingEdited) {
         handleEditingEvents(e);
         return;

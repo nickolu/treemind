@@ -1,7 +1,8 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 "use client";
-import { KeyboardEvent, memo, useCallback, useEffect, useState } from 'react';
-import ReactFlow, {
+import dynamic from 'next/dynamic';
+import { KeyboardEvent, memo, useCallback, useEffect, useState, useMemo } from 'react';
+import {
   Controls,
   Background,
   useNodesState,
@@ -11,8 +12,8 @@ import ReactFlow, {
   Node
 } from 'reactflow';
 import 'reactflow/dist/style.css';
-import { ReactFlowMindMapNode } from '@/components/molecules/ReactFlowMindMapNode';
 import { TreeNode } from '@/domain/TreeNode';
+import { ReactFlowMindMapNode } from '@/components/molecules/ReactFlowMindMapNode';
 import { useMindMapKeyboardEvents } from '@/components/molecules/MindMapKeyboardEvents/useMindMapKeyboardEvents';
 import { transformTreeToFlow } from './transformTreeToFlow';
 import { Box, Button, Stack } from '@mui/material';
@@ -29,15 +30,28 @@ const nodeTypes = {
   mindMapNode: memo(ReactFlowMindMapNode),
 };
 
+// Dynamically import ReactFlow with ssr disabled
+const ReactFlow = dynamic(() => import('reactflow'), {
+  ssr: false,
+});
+
 export function ReactFlowMindMap({ treeData }: ReactFlowMindMapProps) {
   const { useAutoLayout, selectedNodeId } = useMindMapStateContext();
-  const { nodes: initialNodes, edges: initialEdges } = transformTreeToFlow(treeData, 0, 0, 0, [], [], useAutoLayout);
+  
+  const { nodes: initialNodes, edges: initialEdges } = useMemo(() => 
+    transformTreeToFlow(treeData, 0, 0, 0, [], [], useAutoLayout),
+    [treeData, useAutoLayout]
+  );
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance | null>(null);
 
-  const stringifiedTreeData = JSON.stringify(treeData);
+  // Sync nodes and edges with tree data
+  useEffect(() => {
+    setNodes(initialNodes);
+    setEdges(initialEdges);
+  }, [initialNodes, initialEdges, setNodes, setEdges]);
 
   // Function to get all descendant node IDs for a given node
   const getDescendantIds = useCallback((nodeId: string): string[] => {
@@ -83,28 +97,25 @@ export function ReactFlowMindMap({ treeData }: ReactFlowMindMapProps) {
   useMindMapKeyboardEvents();
 
   useEffect(() => {
-    const { nodes: newNodes, edges: newEdges } = transformTreeToFlow(
-      treeData,
-      0,
-      0,
-      0,
-      [],
-      [],
-      useAutoLayout,
-      nodes
-    );
-    setNodes(newNodes);
-    setEdges(newEdges);
-  }, [stringifiedTreeData, setNodes, setEdges, treeData, useAutoLayout]);
-
-  useEffect(() => {
     if (!reactFlowInstance) return;
     reactFlowInstance.fitView({ padding: 0.2 });
   }, [reactFlowInstance]);
 
+  // Save to local storage when tree changes
+  const debouncedSave = useMemo(() => {
+    let timeoutId: NodeJS.Timeout;
+    return () => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        saveMindMapToLocalStorage(treeData);
+      }, 500);
+    };
+  }, [treeData]);
+
   useEffect(() => {
-    saveMindMapToLocalStorage(treeData);
-  }, [stringifiedTreeData]);
+    debouncedSave();
+    return debouncedSave;
+  }, [debouncedSave]);
 
   useEffect(() => {
     if (!reactFlowInstance || !selectedNodeId) return;

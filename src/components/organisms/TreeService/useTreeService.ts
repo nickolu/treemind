@@ -33,69 +33,70 @@ function treeReducer(state: TreeState, action: TreeActionType): TreeState {
         children: [],
       });
 
-      const insertIntoNode = (node: TreeNode): boolean => {
+      const cloneWithInsert = (node: TreeNode): TreeNode => {
         if (node.id === parentId) {
-          node.insertChild(newNode);
-          return true;
+          return new TreeNode({
+            ...node,
+            children: [...node.children, newNode],
+            html: node.html,
+          });
         }
 
-        for (const child of node.children) {
-          if (insertIntoNode(child)) {
-            return true;
-          }
-        }
-
-        return false;
+        return new TreeNode({
+          ...node,
+          children: node.children.map(child => cloneWithInsert(child)),
+          html: node.html,
+        });
       };
 
-      insertIntoNode(state.root);
-      return {...state};
+      return {
+        ...state,
+        root: cloneWithInsert(state.root),
+      };
     }
 
     case TreeAction.EDIT_HTML: {
       const {id, html} = action.payload;
 
-      const editNode = (node: TreeNode): boolean => {
+      const cloneWithEdit = (node: TreeNode): TreeNode => {
         if (node.id === id) {
-          node.html = html;
-          return true;
+          return new TreeNode({
+            ...node,
+            html,
+            children: [...node.children],
+          });
         }
 
-        for (const child of node.children) {
-          if (editNode(child)) {
-            return true;
-          }
-        }
-
-        return false;
+        return new TreeNode({
+          ...node,
+          children: node.children.map(child => cloneWithEdit(child)),
+          html: node.html,
+        });
       };
 
-      editNode(state.root);
-      return {...state};
+      return {
+        ...state,
+        root: cloneWithEdit(state.root),
+      };
     }
 
     case TreeAction.DELETE: {
       const {id} = action.payload;
 
-      const deleteFromNode = (node: TreeNode): boolean => {
-        const index = node.children.findIndex((child) => child.id === id);
-
-        if (index !== -1) {
-          node.children.splice(index, 1);
-          return true;
-        }
-
-        for (const child of node.children) {
-          if (deleteFromNode(child)) {
-            return true;
-          }
-        }
-
-        return false;
+      const cloneWithoutNode = (node: TreeNode): TreeNode => {
+        return new TreeNode({
+          ...node,
+          children: node.children
+            .filter(child => child.id !== id)
+            .map(child => cloneWithoutNode(child)),
+          html: node.html,
+        });
       };
 
-      deleteFromNode(state.root);
-      return {...state};
+      return {
+        ...state,
+        root: cloneWithoutNode(state.root),
+      };
     }
 
     default:

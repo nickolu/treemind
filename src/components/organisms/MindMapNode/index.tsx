@@ -29,11 +29,8 @@ export const MindMapNode: React.FC<{
   const textEditorRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    console.log('on html change');
     const updatedText = parseTextFromHtml(html);
     setText(updatedText);
-    console.log('html', html);
-    console.log('updatedText', updatedText);
   }, [html]);
 
   useEffect(() => {
