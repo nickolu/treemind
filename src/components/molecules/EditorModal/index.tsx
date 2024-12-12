@@ -1,11 +1,11 @@
 "use client";
 import { TreeNode } from "@/domain/TreeNode";
 import { useCallback, useEffect, useRef, useState } from "react";
-import ReactQuill from "react-quill-new";
-import { Box, Button, ButtonGroup, Modal, styled, Tab, Tabs, TextField } from "@mui/material";
+import { Box, Button, ButtonGroup, Modal, styled, Tab, Tabs, TextField, CircularProgress } from "@mui/material";
 import { useTreeServiceContext } from "@/components/organisms/TreeService/useTreeServiceContext";
+import dynamic from 'next/dynamic';
 import 'react-quill-new/dist/quill.snow.css';
-
+import type ReactQuillType from "react-quill";
 
 const StyledModal = styled(Modal)({
     display: 'flex',
@@ -45,6 +45,11 @@ function TabPanel(props: TabPanelProps) {
     );
 }
 
+const ReactQuill = dynamic(() => import('react-quill-new'), {
+  ssr: false,
+  loading: () => <CircularProgress />,
+});
+
 export const EditorModal = ({
     isModalOpen,
     setIsModalOpen,
@@ -53,7 +58,7 @@ export const EditorModal = ({
     node,
 }: EditorModalProps) => {
     const treeService = useTreeServiceContext();
-    const editorRef = useRef<ReactQuill>(null);
+    const editorRef = useRef<ReactQuillType>(null);
     const [tabValue, setTabValue] = useState(0);
 
     useEffect(() => {
@@ -82,6 +87,8 @@ export const EditorModal = ({
     const handleTabChange = useCallback((_event: React.SyntheticEvent, newValue: number) => {
         setTabValue(newValue);
     }, []);
+ 
+    const LoadedReactQuill = ReactQuill as typeof ReactQuillType;
 
     return (
         <StyledModal open={isModalOpen} onClose={handleClose}>
@@ -93,7 +100,7 @@ export const EditorModal = ({
                     </Tabs>
                 </Box>
                 <TabPanel value={tabValue} index={0}>
-                    <ReactQuill
+                    <LoadedReactQuill
                         ref={editorRef}
                         value={html}
                         onChange={handleEditorChange}

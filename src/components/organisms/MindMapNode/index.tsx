@@ -1,5 +1,4 @@
 'use client';
-import 'react-quill/dist/quill.snow.css';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Box, TextField } from '@mui/material';
 import { useMindMapStateContext } from '@/components/organisms/MindMapState/useMindMapStateContext';
