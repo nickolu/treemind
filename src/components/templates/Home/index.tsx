@@ -8,8 +8,8 @@ import { useMindMapState } from '@/components/organisms/MindMapState/useMindMapS
 
 function HomePage() {
     const treeService = useTreeService();
-    const mindMapState = useMindMapState()
     const tree = treeService.tree;
+    const mindMapState = useMindMapState(tree.root.id)
 
     return (
         <TreeServiceContext.Provider value={treeService}>

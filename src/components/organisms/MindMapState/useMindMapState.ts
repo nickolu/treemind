@@ -14,10 +14,10 @@ export interface MindMapState {
   setUseAutoLayout: (useAutoLayout: boolean) => void;
 }
 
-export function useMindMapState(): MindMapState {
+export function useMindMapState(rootNodeId: string): MindMapState {
   const [areKeyboardEventsEnabled, setAreKeyboardEventsEnabled] =
     useState(true);
-  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(rootNodeId);
   const [isNodeBeingEdited, setIsNodeBeingEdited] = useState<boolean>(false);
   const [isEditorModalOpen, setIsEditorModalOpen] = useState<boolean>(false);
   const [useAutoLayout, setUseAutoLayout] = useState<boolean>(true);
