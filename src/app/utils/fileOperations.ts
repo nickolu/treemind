@@ -22,6 +22,8 @@ export function deserializeJsonToTree(json: TreeNodeJson): TreeNode {
 }
 
 export async function saveMindMapToFile(root: TreeNode) {
+  if (typeof window === 'undefined') return;
+  
   const json = serializeTreeToJson(root);
   const blob = new Blob([JSON.stringify(json, null, 2)], {
     type: 'application/json',
@@ -38,6 +40,8 @@ export async function saveMindMapToFile(root: TreeNode) {
 }
 
 export async function loadMindMapFromFile(): Promise<TreeNode | null> {
+  if (typeof window === 'undefined') return null;
+  
   return new Promise((resolve) => {
     const input = document.createElement('input');
     input.type = 'file';

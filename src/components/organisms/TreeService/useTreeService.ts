@@ -103,18 +103,32 @@ function treeReducer(state: TreeState, action: TreeActionType): TreeState {
   }
 }
 
-const initialState: TreeState = {
-  root:
-    loadMindMapFromLocalStorage() ||
-    new TreeNode({
-      children: [],
-      parentId: null,
-      html: 'New Mindmap',
-    }),
+const getInitialState = (): TreeState => {
+  if (typeof window === 'undefined') {
+    return {
+      root: new TreeNode({
+        id: '1',
+        parentId: null,
+        html: 'Root Node',
+        children: [],
+      }),
+    };
+  }
+  
+  return {
+    root:
+      loadMindMapFromLocalStorage() ||
+      new TreeNode({
+        id: '1',
+        parentId: null,
+        html: 'Root Node',
+        children: [],
+      }),
+  };
 };
 
 export function useTreeService(): TreeService {
-  const [state, dispatch] = useReducer(treeReducer, initialState);
+  const [state, dispatch] = useReducer(treeReducer, getInitialState());
 
   const getNodeById = useCallback(
     (id: string): TreeNode | undefined => {
