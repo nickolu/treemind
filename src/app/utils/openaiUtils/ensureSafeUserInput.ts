@@ -1,8 +1,4 @@
-import OpenAI from "openai";
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+import OpenAI from 'openai';
 
 const systemPrompt = `Is the following user input safe to use?
 
@@ -17,48 +13,50 @@ The following considerations will mean the input is not safe:
 `;
 
 async function ensureSafeUserInput(
-  userInput: string
+  userInput: string,
 ): Promise<object | undefined> {
   const functionDefinition = {
-    name: "ensure_safe_user_input",
-    description: "Ensures the user input is safe",
+    name: 'ensure_safe_user_input',
+    description: 'Ensures the user input is safe',
     parameters: {
-      type: "object",
+      type: 'object',
       properties: {
         isSafe: {
-          type: "boolean",
-          description: "Whether the user input is safe",
+          type: 'boolean',
+          description: 'Whether the user input is safe',
         },
         reason: {
-          type: "string",
-          description: "The reason for the input being safe or not",
+          type: 'string',
+          description: 'The reason for the input being safe or not',
         },
       },
-      required: ["isSafe", "reason"],
+      required: ['isSafe', 'reason'],
     },
   };
 
+  // Created per call so a missing key fails the request, not the module import.
+  const openai = new OpenAI({apiKey: process.env.OPENAI_API_KEY});
   const response = await openai.chat.completions.create({
-    model: "gpt-4o",
+    model: 'gpt-4o',
     messages: [
       {
-        role: "system",
+        role: 'system',
         content: systemPrompt,
       },
       {
-        role: "user",
+        role: 'user',
         content: userInput,
       },
     ],
     tools: [
       {
-        type: "function",
+        type: 'function',
         function: functionDefinition,
       },
     ],
     tool_choice: {
-      type: "function",
-      function: { name: "ensure_safe_user_input" },
+      type: 'function',
+      function: {name: 'ensure_safe_user_input'},
     },
   });
 
@@ -68,8 +66,8 @@ async function ensureSafeUserInput(
     const parsedArgs = JSON.parse(toolCall.function.arguments);
     return parsedArgs;
   }
-  console.error("Failed to ensure safe user input");
-  throw new Error("Failed to ensure safe user input");
+  console.error('Failed to ensure safe user input');
+  throw new Error('Failed to ensure safe user input');
 }
 
-export { ensureSafeUserInput };
+export {ensureSafeUserInput};

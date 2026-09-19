@@ -1,73 +1,48 @@
-import {TreeNode, TreeNodeJson} from '@/domain/TreeNode';
+import {MindNode, normalizeTree, serializeTree} from '@/domain/MindMap/tree';
+import {htmlToText} from '@/domain/MindMap/html';
 
-export function serializeTreeToJson(node: TreeNode): TreeNodeJson {
-  return {
-    id: node.id,
-    parentId: node.parentId,
-    html: node.html,
-    children: node.children.map((child) => serializeTreeToJson(child)),
-  };
+function fileNameFor(root: MindNode) {
+  const slug = htmlToText(root.html)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 50);
+  return `${slug || 'mindmap'}.json`;
 }
 
-export function deserializeJsonToTree(json: TreeNodeJson): TreeNode {
-  const node = new TreeNode({
-    id: json.id,
-    parentId: json.parentId,
-    html: json.html,
-    children: [],
-  });
-
-  node.children = json.children.map((child) => deserializeJsonToTree(child));
-  return node;
-}
-
-export async function saveMindMapToFile(root: TreeNode) {
-  if (typeof window === 'undefined') return;
-  
-  const json = serializeTreeToJson(root);
-  const blob = new Blob([JSON.stringify(json, null, 2)], {
+export function saveMindMapToFile(root: MindNode) {
+  const blob = new Blob([JSON.stringify(serializeTree(root), null, 2)], {
     type: 'application/json',
   });
   const url = URL.createObjectURL(blob);
-
   const a = document.createElement('a');
   a.href = url;
-  a.download = 'mindmap.json';
+  a.download = fileNameFor(root);
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
 
-export async function loadMindMapFromFile(): Promise<TreeNode | null> {
-  if (typeof window === 'undefined') return null;
-  
-  return new Promise((resolve) => {
+/**
+ * Opens a file picker and resolves with the parsed tree, or null if the user
+ * cancelled. Rejects if the file isn't a valid mind map.
+ */
+export function loadMindMapFromFile(): Promise<MindNode | null> {
+  return new Promise((resolve, reject) => {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = '.json';
-
-    input.onchange = async (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (!file) {
-        resolve(null);
-        return;
+    input.accept = '.json,application/json';
+    input.addEventListener('cancel', () => resolve(null));
+    input.onchange = async () => {
+      const file = input.files?.[0];
+      if (!file) return resolve(null);
+      try {
+        resolve(normalizeTree(JSON.parse(await file.text())));
+      } catch (error) {
+        reject(error);
       }
-
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        try {
-          const json = JSON.parse(e.target?.result as string);
-          const tree = deserializeJsonToTree(json);
-          resolve(tree);
-        } catch (error) {
-          console.error('Error parsing mindmap file:', error);
-          resolve(null);
-        }
-      };
-      reader.readAsText(file);
     };
-
     input.click();
   });
 }
