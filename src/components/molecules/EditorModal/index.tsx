@@ -1,137 +1,150 @@
-"use client";
-import { TreeNode } from "@/domain/TreeNode";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Box, Button, ButtonGroup, Modal, styled, Tab, Tabs, TextField, CircularProgress } from "@mui/material";
-import { useTreeServiceContext } from "@/components/organisms/TreeService/useTreeServiceContext";
+'use client';
+import {useCallback, useEffect, useRef, useState} from 'react';
 import dynamic from 'next/dynamic';
+import {
+  Box,
+  Button,
+  CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Tab,
+  Tabs,
+  TextField,
+} from '@mui/material';
 import 'react-quill-new/dist/quill.snow.css';
-import type ReactQuillType from "react-quill";
-
-const StyledModal = styled(Modal)({
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-});
-
-interface EditorModalProps {
-    isModalOpen: boolean;
-    setIsModalOpen: (isModalOpen: boolean) => void;
-    node: TreeNode;
-    html: string;
-    setHtml: (html: string) => void;
-}
-
-interface TabPanelProps {
-    children?: React.ReactNode;
-    index: number;
-    value: number;
-}
-
-function TabPanel(props: TabPanelProps) {
-    const { children, value, index, ...other } = props;
-
-    return (
-        <div
-            role="tabpanel"
-            hidden={value !== index}
-            {...other}
-        >
-            {value === index && (
-                <Box sx={{ p: 2 }}>
-                    {children}
-                </Box>
-            )}
-        </div>
-    );
-}
+import {findNode} from '@/domain/MindMap/tree';
+import {sanitizeHtml} from '@/domain/MindMap/html';
+import {
+  useMindMapActions,
+  useMindMapState,
+} from '@/components/organisms/MindMapStore/MindMapStoreContext';
+import {MOD} from '@/components/molecules/MindMapKeyboardEvents/shortcuts';
 
 const ReactQuill = dynamic(() => import('react-quill-new'), {
   ssr: false,
-  loading: () => <CircularProgress />,
+  loading: () => (
+    <Box sx={{display: 'grid', placeItems: 'center', height: 200}}>
+      <CircularProgress size={24} />
+    </Box>
+  ),
 });
 
-export const EditorModal = ({
-    isModalOpen,
-    setIsModalOpen,
-    html,
-    setHtml,
-    node,
-}: EditorModalProps) => {
-    const treeService = useTreeServiceContext();
-    const editorRef = useRef<ReactQuillType>(null);
-    const [tabValue, setTabValue] = useState(0);
-
-    useEffect(() => {
-        if (isModalOpen && editorRef.current) {
-            const editor = editorRef.current.getEditor();
-            editor.focus();
-            const length = editor.getLength();
-            editor.setSelection(length, length);
-        }
-    }, [isModalOpen]);
-
-    const handleEditorChange = useCallback((content: string) => {
-        setHtml(content);
-        treeService.editNodeHtml(node.id, content);
-    }, []);
-
-    const handleClose = useCallback(() => {
-        setIsModalOpen(false);
-    }, []);
-
-    const handleSave = useCallback(() => {
-        setHtml(html);
-        setIsModalOpen(false);
-    }, [node.id, html, treeService]);
-
-    const handleTabChange = useCallback((_event: React.SyntheticEvent, newValue: number) => {
-        setTabValue(newValue);
-    }, []);
- 
-    const LoadedReactQuill = ReactQuill as typeof ReactQuillType;
-
-    return (
-        <StyledModal open={isModalOpen} onClose={handleClose}>
-            <Box sx={{ bgcolor: 'background.paper', width: 600, borderRadius: 1 }}>
-                <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-                    <Tabs value={tabValue} onChange={handleTabChange}>
-                        <Tab label="Editor" />
-                        <Tab label="HTML" />
-                    </Tabs>
-                </Box>
-                <TabPanel value={tabValue} index={0}>
-                    <LoadedReactQuill
-                        ref={editorRef}
-                        value={html}
-                        onChange={handleEditorChange}
-                        modules={{
-                            toolbar: [
-                                ['bold', 'italic', 'underline'],
-                                ['link'],
-                                [{ list: 'ordered' }, { list: 'bullet' }],
-                            ],
-                        }}
-                    />
-                </TabPanel>
-                <TabPanel value={tabValue} index={1}>
-                    <TextField
-                        multiline
-                        fullWidth
-                        value={html}
-                        onChange={(e) => handleEditorChange(e.target.value)}
-                    />
-                </TabPanel>
-                <Box sx={{ padding: 2, display: 'flex', justifyContent: 'flex-end' }}>
-                    <ButtonGroup>
-                        <Button onClick={handleClose}>
-                            Cancel
-                        </Button>
-                        <Button onClick={handleSave} variant="contained">
-                            Save
-                        </Button>
-                    </ButtonGroup>
-                </Box>
-            </Box>
-        </StyledModal >
-    );
+const QUILL_MODULES = {
+  toolbar: [
+    ['bold', 'italic', 'underline', 'strike'],
+    ['link', 'code'],
+    [{list: 'ordered'}, {list: 'bullet'}],
+    ['clean'],
+  ],
 };
+
+/**
+ * One editor for the whole app, opened for a specific node. Edits are kept
+ * in a local draft and only written to the map on Save, so Cancel really
+ * cancels (and a whole editing session is a single undo step).
+ */
+export function EditorModal() {
+  const {root, richEditorId} = useMindMapState();
+  const actions = useMindMapActions();
+  const node = richEditorId ? findNode(root, richEditorId) : undefined;
+
+  const [draft, setDraft] = useState('');
+  const [tab, setTab] = useState(0);
+  const initialRef = useRef('');
+
+  useEffect(() => {
+    if (!richEditorId) return;
+    const html = (richEditorId && findNode(root, richEditorId)?.html) || '';
+    initialRef.current = html;
+    setDraft(html);
+    setTab(0);
+    // Only when a node is opened; later tree changes don't reset the draft.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [richEditorId]);
+
+  // Quill loads lazily, so wait for it to mount, then focus it with the
+  // caret at the end.
+  const focusEditor = useCallback((dialog: HTMLElement) => {
+    let attempts = 0;
+    const tryFocus = () => {
+      const editable = dialog.querySelector<HTMLElement>('.ql-editor');
+      if (!editable) {
+        if (attempts++ < 60) requestAnimationFrame(tryFocus);
+        return;
+      }
+      editable.focus();
+      const range = document.createRange();
+      range.selectNodeContents(editable);
+      range.collapse(false);
+      window.getSelection()?.removeAllRanges();
+      window.getSelection()?.addRange(range);
+    };
+    tryFocus();
+  }, []);
+
+  const close = () => actions.openRichEditor(null);
+  const save = () => {
+    if (node) {
+      // Quill represents an empty document as an empty paragraph.
+      const html = sanitizeHtml(draft).replace(/^<p><br><\/p>$/, '');
+      if (html !== initialRef.current) actions.setHtml(node.id, html);
+    }
+    close();
+  };
+
+  return (
+    <Dialog
+      open={!!node}
+      onClose={close}
+      maxWidth="sm"
+      fullWidth
+      TransitionProps={{onEntered: focusEditor}}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+          event.preventDefault();
+          save();
+        }
+      }}
+    >
+      <DialogTitle sx={{pb: 0}}>Edit node</DialogTitle>
+      <Tabs value={tab} onChange={(_, value) => setTab(value)} sx={{px: 3}}>
+        <Tab label="Formatted" />
+        <Tab label="HTML" />
+      </Tabs>
+      <DialogContent dividers sx={{minHeight: 240}}>
+        {tab === 0 ? (
+          <Box sx={{'& .ql-container': {minHeight: 160, fontSize: 15}}}>
+            <ReactQuill
+              theme="snow"
+              value={draft}
+              onChange={setDraft}
+              modules={QUILL_MODULES}
+            />
+          </Box>
+        ) : (
+          <TextField
+            multiline
+            fullWidth
+            minRows={8}
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+            slotProps={{
+              htmlInput: {
+                spellCheck: false,
+                style: {fontFamily: 'monospace', fontSize: 13},
+              },
+            }}
+          />
+        )}
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={close}>Cancel</Button>
+        <Button onClick={save} variant="contained" title={`${MOD} Enter`}>
+          Save
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+}

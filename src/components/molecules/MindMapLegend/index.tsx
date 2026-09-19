@@ -1,92 +1,76 @@
-import { useState } from 'react';
+'use client';
+import {Box, Divider, Typography} from '@mui/material';
 import {
-  Box,
-  Paper,
-  Typography,
-  IconButton,
-  List,
-  ListItem,
-  ListItemText,
-  Collapse,
-  Divider,
-} from '@mui/material';
-import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
-import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
+  EDITING_SHORTCUTS,
+  SHORTCUTS,
+} from '@/components/molecules/MindMapKeyboardEvents/shortcuts';
 
-const keyboardShortcuts = [
-  { key: 'Enter', description: 'Add sibling node' },
-  { key: 'Tab', description: 'Add child node' },
-  { key: 'Alt/Option + Tab', description: 'Add some AI generated nodes' },
-  { key: 'Delete/Backspace', description: 'Delete selected node' },
-  { key: '↑/↓', description: 'Navigate between siblings' },
-  { key: '←/→', description: 'Navigate parent/child nodes' },
-  { key: 'Enter (while editing)', description: 'Finish editing' },
-  { key: 'Escape', description: 'Cancel editing' },
-];
-
-export function MindMapLegend() {
-  const [isExpanded, setIsExpanded] = useState(true);
-
+function Keys({keys}: {keys: string[]}) {
   return (
-    <Paper
+    <Box
       sx={{
-        position: 'absolute',
-        top: 20,
-        left: 20,
-        zIndex: 1000,
-        maxWidth: 300,
-        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+        display: 'flex',
+        gap: 0.5,
+        flexWrap: 'wrap',
+        justifyContent: 'flex-end',
       }}
-      elevation={3}
     >
-      <Box
-        sx={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          p: 1,
-          cursor: 'pointer',
-        }}
-        onClick={() => setIsExpanded(!isExpanded)}
-      >
-        <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
-          Keyboard Shortcuts
-        </Typography>
-        <IconButton size="small">
-          {isExpanded ? <KeyboardArrowDownIcon /> : <KeyboardArrowUpIcon />}
-        </IconButton>
-      </Box>
-      <Collapse in={isExpanded}>
-        <Divider />
-        <List dense sx={{ pt: 0, pb: 0 }}>
-          {keyboardShortcuts.map(({ key, description }, index) => (
-            <ListItem key={index} sx={{ py: 0.5 }}>
-              <ListItemText
-                primary={
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <Typography
-                      component="span"
-                      sx={{
-                        backgroundColor: 'grey.100',
-                        px: 1,
-                        py: 0.5,
-                        borderRadius: 1,
-                        fontSize: '0.875rem',
-                        fontFamily: 'monospace',
-                      }}
-                    >
-                      {key}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {description}
-                    </Typography>
-                  </Box>
-                }
-              />
-            </ListItem>
+      {keys.map((combo) => (
+        <Box key={combo} sx={{display: 'flex', gap: 0.25}}>
+          {combo.split(' ').map((key) => (
+            <kbd key={key} className="mm-kbd">
+              {key}
+            </kbd>
           ))}
-        </List>
-      </Collapse>
-    </Paper>
+        </Box>
+      ))}
+    </Box>
+  );
+}
+
+function Section({
+  title,
+  items,
+}: {
+  title: string;
+  items: {keys: string[]; description: string}[];
+}) {
+  return (
+    <Box>
+      <Typography variant="overline" color="text.secondary">
+        {title}
+      </Typography>
+      {items.map(({keys, description}) => (
+        <Box
+          key={description}
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 2,
+            py: 0.5,
+          }}
+        >
+          <Typography variant="body2">{description}</Typography>
+          <Keys keys={keys} />
+        </Box>
+      ))}
+    </Box>
+  );
+}
+
+/** Keyboard reference, rendered from the same table the key handler uses. */
+export function MindMapLegend() {
+  return (
+    <Box sx={{p: 2, width: 340}}>
+      <Section title="Mind map" items={SHORTCUTS} />
+      <Divider sx={{my: 1}} />
+      <Section title="While editing text" items={EDITING_SHORTCUTS} />
+      <Divider sx={{my: 1}} />
+      <Typography variant="body2" color="text.secondary">
+        Drag a node onto another to move it there, or up/down to reorder.
+        Double-click to edit.
+      </Typography>
+    </Box>
   );
 }
