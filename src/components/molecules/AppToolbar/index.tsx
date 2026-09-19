@@ -5,6 +5,9 @@ import {
   Box,
   Divider,
   IconButton,
+  ListItemText,
+  Menu,
+  MenuItem,
   Popover,
   Tooltip,
   Typography,
@@ -22,6 +25,7 @@ import KeyboardOutlinedIcon from '@mui/icons-material/KeyboardOutlined';
 import {createRoot} from '@/domain/MindMap/tree';
 import {htmlToText} from '@/domain/MindMap/html';
 import {
+  ExportFormat,
   loadMindMapFromFile,
   saveMindMapToFile,
 } from '@/app/utils/fileOperations';
@@ -70,6 +74,7 @@ export function AppToolbar() {
   const [shortcutsAnchor, setShortcutsAnchor] = useState<HTMLElement | null>(
     null,
   );
+  const [saveAnchor, setSaveAnchor] = useState<HTMLElement | null>(null);
 
   const title = htmlToText(root.html) || 'Untitled';
 
@@ -100,6 +105,11 @@ export function AppToolbar() {
     }
   };
 
+  const handleSave = (format: ExportFormat) => {
+    setSaveAnchor(null);
+    saveMindMapToFile(root, format);
+  };
+
   return (
     <Box component="header" className="mm-appbar">
       <Box sx={{display: 'flex', alignItems: 'center', gap: 1, minWidth: 0}}>
@@ -121,12 +131,15 @@ export function AppToolbar() {
         <ToolButton title="New mind map" onClick={handleNew}>
           <NoteAddOutlinedIcon fontSize="small" />
         </ToolButton>
-        <ToolButton title="Open from file…" onClick={handleOpen}>
+        <ToolButton
+          title="Open file (TreeMind, FreeMind or XMind)…"
+          onClick={handleOpen}
+        >
           <FolderOpenOutlinedIcon fontSize="small" />
         </ToolButton>
         <ToolButton
-          title="Save to file"
-          onClick={() => saveMindMapToFile(root)}
+          title="Save to file…"
+          onClick={(event) => setSaveAnchor(event.currentTarget)}
         >
           <FileDownloadOutlinedIcon fontSize="small" />
         </ToolButton>
@@ -174,6 +187,21 @@ export function AppToolbar() {
           <KeyboardOutlinedIcon fontSize="small" />
         </ToolButton>
       </Box>
+
+      <Menu
+        open={!!saveAnchor}
+        anchorEl={saveAnchor}
+        onClose={() => setSaveAnchor(null)}
+        anchorOrigin={{vertical: 'bottom', horizontal: 'right'}}
+        transformOrigin={{vertical: 'top', horizontal: 'right'}}
+      >
+        <MenuItem onClick={() => handleSave('json')}>
+          <ListItemText primary="TreeMind" secondary=".json" />
+        </MenuItem>
+        <MenuItem onClick={() => handleSave('freemind')}>
+          <ListItemText primary="FreeMind" secondary=".mm" />
+        </MenuItem>
+      </Menu>
 
       <Popover
         open={!!shortcutsAnchor}
