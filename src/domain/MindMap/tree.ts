@@ -11,7 +11,20 @@ export interface MindNode {
   html: string;
   children: MindNode[];
   collapsed?: boolean;
+  /** Present when the node is drawn as a class box (name = the node's text). */
+  umlClass?: UmlClass;
+  /** For AI-generated nodes: whether they came from the user's context. */
+  origin?: NodeOrigin;
 }
+
+export interface UmlClass {
+  /** Free text such as "entity" or "interface"; rendered as «stereotype». */
+  stereotype: string;
+  attributes: string[];
+  operations: string[];
+}
+
+export type NodeOrigin = 'context' | 'inferred';
 
 /** Shape of a node in saved files / localStorage (backwards compatible). */
 export type MindNodeJson = {
@@ -20,7 +33,28 @@ export type MindNodeJson = {
   html?: string;
   children?: MindNodeJson[];
   collapsed?: boolean;
+  umlClass?: Partial<UmlClass>;
+  origin?: NodeOrigin;
 };
+
+export function createUmlClass(stereotype = ''): UmlClass {
+  return {stereotype, attributes: [], operations: []};
+}
+
+const stringList = (value: unknown): string[] =>
+  Array.isArray(value)
+    ? value.filter((v): v is string => typeof v === 'string')
+    : [];
+
+function normalizeUmlClass(value: unknown): UmlClass | undefined {
+  if (!value || typeof value !== 'object') return undefined;
+  const uml = value as Partial<UmlClass>;
+  return {
+    stereotype: typeof uml.stereotype === 'string' ? uml.stereotype : '',
+    attributes: stringList(uml.attributes),
+    operations: stringList(uml.operations),
+  };
+}
 
 export function createNode(
   parentId: string | null,
@@ -41,6 +75,13 @@ export function findNode(root: MindNode, id: string): MindNode | undefined {
     if (found) return found;
   }
   return undefined;
+}
+
+/** Every node id in the tree. */
+export function collectIds(node: MindNode, ids = new Set<string>()) {
+  ids.add(node.id);
+  node.children.forEach((child) => collectIds(child, ids));
+  return ids;
 }
 
 export function getParent(root: MindNode, node: MindNode) {
@@ -193,6 +234,11 @@ export function normalizeTree(
       .map((child) => normalizeTree(child, id)),
   };
   if (value.collapsed && node.children.length > 0) node.collapsed = true;
+  const umlClass = normalizeUmlClass(value.umlClass);
+  if (umlClass) node.umlClass = umlClass;
+  if (value.origin === 'context' || value.origin === 'inferred') {
+    node.origin = value.origin;
+  }
   return node;
 }
 
@@ -202,6 +248,8 @@ export function serializeTree(node: MindNode): MindNodeJson {
     parentId: node.parentId,
     html: node.html,
     ...(node.collapsed ? {collapsed: true} : {}),
+    ...(node.umlClass ? {umlClass: node.umlClass} : {}),
+    ...(node.origin ? {origin: node.origin} : {}),
     children: node.children.map(serializeTree),
   };
 }

@@ -69,7 +69,8 @@ export function MindMapLegend() {
       <Divider sx={{my: 1}} />
       <Typography variant="body2" color="text.secondary">
         Drag a node onto another to move it there, or up/down to reorder.
-        Double-click to edit.
+        Double-click to edit. Drag the dot under a node onto another node to
+        link them; click a link to change its type or label.
       </Typography>
     </Box>
   );

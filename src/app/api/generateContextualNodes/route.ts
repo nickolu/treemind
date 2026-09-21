@@ -1,5 +1,6 @@
 import {ensureSafeUserInput} from '@/app/utils/openaiUtils/ensureSafeUserInput';
 import {NEW_NODES_MARKER} from '@/app/utils/aiConstants';
+import {FAST_REASONING, resolveAiModel} from '@/app/utils/aiModels';
 import {NextResponse} from 'next/server';
 import OpenAI from 'openai';
 
@@ -32,8 +33,9 @@ export async function POST(request: Request) {
   }
 
   let input: unknown;
+  let model: unknown;
   try {
-    ({input} = await request.json());
+    ({input, model} = await request.json());
   } catch {
     return NextResponse.json({error: 'Invalid request body.'}, {status: 400});
   }
@@ -55,7 +57,8 @@ export async function POST(request: Request) {
     const [safety, completion] = await Promise.all([
       ensureSafeUserInput(input) as Promise<{isSafe: boolean; reason: string}>,
       openai.chat.completions.create({
-        model: 'gpt-4o',
+        model: resolveAiModel(model),
+        ...FAST_REASONING,
         messages: [{role: 'user', content: prompt(input)}],
         response_format: {
           type: 'json_schema',

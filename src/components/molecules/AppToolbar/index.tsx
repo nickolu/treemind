@@ -22,7 +22,9 @@ import UnfoldLessIcon from '@mui/icons-material/UnfoldLess';
 import UnfoldMoreIcon from '@mui/icons-material/UnfoldMore';
 import FitScreenOutlinedIcon from '@mui/icons-material/FitScreenOutlined';
 import KeyboardOutlinedIcon from '@mui/icons-material/KeyboardOutlined';
+import ViewSidebarOutlinedIcon from '@mui/icons-material/ViewSidebarOutlined';
 import {createRoot} from '@/domain/MindMap/tree';
+import {createDocument} from '@/domain/MindMap/document';
 import {htmlToText} from '@/domain/MindMap/html';
 import {
   ExportFormat,
@@ -43,11 +45,13 @@ function ToolButton({
   title,
   onClick,
   disabled,
+  active,
   children,
 }: {
   title: string;
   onClick: (event: MouseEvent<HTMLButtonElement>) => void;
   disabled?: boolean;
+  active?: boolean;
   children: ReactNode;
 }) {
   return (
@@ -59,6 +63,8 @@ function ToolButton({
           onClick={onClick}
           disabled={disabled}
           aria-label={title}
+          aria-pressed={active}
+          color={active ? 'primary' : 'default'}
         >
           {children}
         </IconButton>
@@ -67,8 +73,14 @@ function ToolButton({
   );
 }
 
-export function AppToolbar() {
-  const {root, canUndo, canRedo} = useMindMapState();
+export function AppToolbar({
+  panelOpen,
+  onTogglePanel,
+}: {
+  panelOpen: boolean;
+  onTogglePanel: () => void;
+}) {
+  const {root, links, context, canUndo, canRedo} = useMindMapState();
   const actions = useMindMapActions();
   const reactFlow = useReactFlow();
   const [shortcutsAnchor, setShortcutsAnchor] = useState<HTMLElement | null>(
@@ -80,14 +92,14 @@ export function AppToolbar() {
 
   const handleNew = () => {
     if (
-      root.children.length > 0 &&
+      (root.children.length > 0 || context.trim()) &&
       !window.confirm(
         'Start a new mind map? The current one will be replaced (save it first if you want to keep it).',
       )
     ) {
       return;
     }
-    actions.replace(createRoot());
+    actions.replace(createDocument(createRoot()));
   };
 
   const handleOpen = async () => {
@@ -96,7 +108,7 @@ export function AppToolbar() {
       if (loaded) {
         actions.replace(loaded);
         actions.notify(
-          `Opened “${htmlToText(loaded.html) || 'Untitled'}”`,
+          `Opened “${htmlToText(loaded.root.html) || 'Untitled'}”`,
           'success',
         );
       }
@@ -107,7 +119,7 @@ export function AppToolbar() {
 
   const handleSave = (format: ExportFormat) => {
     setSaveAnchor(null);
-    saveMindMapToFile(root, format);
+    saveMindMapToFile({root, links, context}, format);
   };
 
   return (
@@ -181,6 +193,13 @@ export function AppToolbar() {
         </ToolButton>
         <Divider orientation="vertical" flexItem sx={{mx: 0.5}} />
         <ToolButton
+          title={panelOpen ? 'Hide AI modeling panel' : 'AI modeling panel'}
+          onClick={onTogglePanel}
+          active={panelOpen}
+        >
+          <ViewSidebarOutlinedIcon fontSize="small" />
+        </ToolButton>
+        <ToolButton
           title="Keyboard shortcuts"
           onClick={(event) => setShortcutsAnchor(event.currentTarget)}
         >
@@ -199,7 +218,10 @@ export function AppToolbar() {
           <ListItemText primary="TreeMind" secondary=".json" />
         </MenuItem>
         <MenuItem onClick={() => handleSave('freemind')}>
-          <ListItemText primary="FreeMind" secondary=".mm" />
+          <ListItemText
+            primary="FreeMind"
+            secondary={links.length ? '.mm (tree only, no links)' : '.mm'}
+          />
         </MenuItem>
       </Menu>
 

@@ -106,6 +106,8 @@ export function useMindMapKeyboardShortcuts(
             return (actions.addSibling(node.id), true);
           case 'generate':
             return (actions.generateIdeas(node.id), true);
+          case 'addDetail':
+            return (actions.expandNode(node.id), true);
           case 'edit':
             return (startEditing(), true);
           case 'richEditor':
