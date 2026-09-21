@@ -15,6 +15,7 @@ import ReactFlow, {
   MiniMap,
   Node,
   NodeChange,
+  OnConnectStartParams,
   useNodesInitialized,
   useReactFlow,
 } from 'reactflow';
@@ -26,10 +27,14 @@ import {
   useMindMapState,
 } from '@/components/organisms/MindMapStore/MindMapStoreContext';
 import {isMac} from '@/components/molecules/MindMapKeyboardEvents/shortcuts';
-import {DEFAULT_SIZE, Size, XY, computeLayout} from './layout';
+import {DEFAULT_SIZE, Layout, Size, XY, computeLayout} from './layout';
 import {useAnimatedPositions} from './useAnimatedPositions';
+import {LinkEdge, LinkEdgeData, LinkMarkers} from './LinkEdge';
+import {LinkMenu, LinkMenuTarget} from './LinkMenu';
+import {MindLink} from '@/domain/MindMap/links';
 
 const nodeTypes = {mindMapNode: MindMapNode};
+const edgeTypes = {link: LinkEdge};
 const FIT_VIEW_OPTIONS = {padding: 0.2, maxZoom: 1};
 const FOLLOW_MARGIN = 48;
 
@@ -46,8 +51,91 @@ function visibleSubtreeIds(node: MindNode, ids = new Set<string>()) {
   return ids;
 }
 
+/** The node under a point in flow coordinates, if any. */
+function nodeAt(layout: Layout, point: XY, exclude: (id: string) => boolean) {
+  return layout.nodes.find(
+    (n) =>
+      !exclude(n.id) &&
+      point.x >= n.position.x &&
+      point.x <= n.position.x + n.size.width &&
+      point.y >= n.position.y &&
+      point.y <= n.position.y + n.size.height,
+  );
+}
+
+function parentIds(node: MindNode, map = new Map<string, string>()) {
+  node.children.forEach((child) => {
+    map.set(child.id, node.id);
+    parentIds(child, map);
+  });
+  return map;
+}
+
+/**
+ * One edge per pair of visible nodes. A link whose end is inside a collapsed
+ * branch is drawn to that branch's visible ancestor instead, and several such
+ * links are summarized as one, so collapsing and expanding shows the links at
+ * the level of detail on screen.
+ */
+function linkEdges(
+  root: MindNode,
+  links: MindLink[],
+  layout: Layout,
+): Edge<LinkEdgeData>[] {
+  if (links.length === 0) return [];
+  const parents = parentIds(root);
+  const visible = (id: string) => {
+    let current: string | undefined = id;
+    while (current && !layout.byId.has(current)) current = parents.get(current);
+    return current;
+  };
+
+  const groups = new Map<
+    string,
+    {from: string; to: string; links: MindLink[]}
+  >();
+  links.forEach((link) => {
+    const from = visible(link.from);
+    const to = visible(link.to);
+    if (!from || !to || from === to) return;
+    const key = `${from}->${to}`;
+    const group = groups.get(key) ?? {from, to, links: []};
+    group.links.push(link);
+    groups.set(key, group);
+  });
+
+  // Spread links between the same two nodes (either direction) apart.
+  const perPair = new Map<string, number>();
+  return [...groups.values()].map(({from, to, links: group}) => {
+    const pair = from < to ? `${from}|${to}` : `${to}|${from}`;
+    const index = perPair.get(pair) ?? 0;
+    perPair.set(pair, index + 1);
+    const magnitude = Math.ceil(index / 2) * 24;
+    // Opposite directions have opposite normals, so the sign keeps them apart.
+    const offset = (index % 2 ? 1 : -1) * magnitude * (from < to ? 1 : -1);
+
+    const single = group.length === 1 ? group[0] : null;
+    const summarized = group.some((l) => l.from !== from || l.to !== to);
+    return {
+      id: `link:${from}->${to}`,
+      source: from,
+      target: to,
+      sourceHandle: 'tree',
+      type: 'link',
+      zIndex: 1,
+      data: {
+        linkIds: group.map((l) => l.id),
+        kind: single?.kind ?? null,
+        label: single?.label ?? '',
+        summarized,
+        offset,
+      },
+    };
+  });
+}
+
 export function MindMapCanvas() {
-  const {root, selectedId, editing, generatingIds} = useMindMapState();
+  const {root, links, selectedId, editing, generatingIds} = useMindMapState();
   const actions = useMindMapActions();
   const reactFlow = useReactFlow();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -79,6 +167,8 @@ export function MindMapCanvas() {
           editing?.id === treeNode.id ? editing.initialText : undefined,
         isGenerating: generating.has(treeNode.id),
         isDropTarget: drag?.dropTargetId === treeNode.id,
+        umlClass: treeNode.umlClass,
+        origin: treeNode.origin,
       };
       const cached = dataCache.current.get(treeNode.id);
       const stable =
@@ -114,19 +204,63 @@ export function MindMapCanvas() {
   }, [layout, root, animated, drag, sizes, selectedId, editing, generatingIds]);
 
   const edges = useMemo<Edge[]>(
-    () =>
-      layout.nodes
+    () => [
+      ...layout.nodes
         .filter((n) => n.parentId)
         .map((n) => ({
           id: `${n.parentId}->${n.id}`,
           source: n.parentId!,
+          sourceHandle: 'tree',
           target: n.id,
           type: 'default',
           style: {stroke: n.color, strokeWidth: n.depth === 1 ? 3 : 2},
           className: 'mm-edge',
+          focusable: false,
         })),
-    [layout],
+      ...linkEdges(root, links, layout),
+    ],
+    [layout, root, links],
   );
+
+  // Dragging from a node's link handle and dropping on another node links them.
+  const linkSourceRef = useRef<string | null>(null);
+  const onConnectStart = useCallback(
+    (_: unknown, {nodeId, handleId}: OnConnectStartParams) => {
+      linkSourceRef.current = handleId === 'link' ? nodeId : null;
+    },
+    [],
+  );
+  const onConnectEnd = useCallback(
+    (event: globalThis.MouseEvent | TouchEvent) => {
+      const source = linkSourceRef.current;
+      linkSourceRef.current = null;
+      if (!source) return;
+      const point = 'changedTouches' in event ? event.changedTouches[0] : event;
+      if (!point) return;
+      const target = nodeAt(
+        layout,
+        reactFlow.screenToFlowPosition({x: point.clientX, y: point.clientY}),
+        (id) => id === source,
+      );
+      if (target) {
+        actions.addLink(source, target.id);
+        actions.select(source);
+      }
+    },
+    [layout, reactFlow, actions],
+  );
+
+  const [linkMenu, setLinkMenu] = useState<LinkMenuTarget | null>(null);
+  const onEdgeClick = useCallback((event: MouseEvent, edge: Edge) => {
+    const data = edge.data as LinkEdgeData | undefined;
+    if (edge.type !== 'link' || !data) return;
+    setLinkMenu({
+      x: event.clientX,
+      y: event.clientY,
+      linkIds: data.linkIds,
+      summarized: data.summarized,
+    });
+  }, []);
 
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => {
@@ -200,14 +334,7 @@ export function MindMapCanvas() {
       });
       setDrag((prev) => {
         if (!prev) return prev;
-        const target = layout.nodes.find(
-          (n) =>
-            !prev.subtree.has(n.id) &&
-            pointer.x >= n.position.x &&
-            pointer.x <= n.position.x + n.size.width &&
-            pointer.y >= n.position.y &&
-            pointer.y <= n.position.y + n.size.height,
-        );
+        const target = nodeAt(layout, pointer, (id) => prev.subtree.has(id));
         const dropTargetId = target?.id ?? null;
         return dropTargetId === prev.dropTargetId
           ? prev
@@ -261,8 +388,12 @@ export function MindMapCanvas() {
     [actions],
   );
 
+  // Classes have several fields, so they open in the class editor.
   const onNodeDoubleClick = useCallback(
-    (_: MouseEvent, node: Node) => actions.startEditing(node.id),
+    (_: MouseEvent, node: Node<MindMapNodeData>) =>
+      node.data.umlClass
+        ? actions.openRichEditor(node.id)
+        : actions.startEditing(node.id),
     [actions],
   );
 
@@ -307,11 +438,17 @@ export function MindMapCanvas() {
 
   return (
     <div ref={containerRef} className="mm-canvas">
+      <LinkMarkers />
       <ReactFlow
         nodes={nodes}
         edges={edges}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         onNodesChange={onNodesChange}
+        onConnectStart={onConnectStart}
+        onConnectEnd={onConnectEnd}
+        onEdgeClick={onEdgeClick}
+        connectionLineStyle={{stroke: 'var(--link)', strokeDasharray: '6 4'}}
         onNodeClick={onNodeClick}
         onNodeDoubleClick={onNodeDoubleClick}
         onNodeDragStart={onNodeDragStart}
@@ -322,7 +459,7 @@ export function MindMapCanvas() {
         minZoom={0.15}
         maxZoom={2}
         nodeDragThreshold={4}
-        nodesConnectable={false}
+        edgesUpdatable={false}
         selectNodesOnDrag={false}
         zoomOnDoubleClick={false}
         panOnScroll
@@ -351,6 +488,7 @@ export function MindMapCanvas() {
           maskColor="rgba(241, 245, 249, 0.7)"
         />
       </ReactFlow>
+      <LinkMenu target={linkMenu} onClose={() => setLinkMenu(null)} />
     </div>
   );
 }

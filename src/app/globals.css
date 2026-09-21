@@ -21,7 +21,11 @@ body {
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
+  font-family:
+    var(--font-geist-sans),
+    system-ui,
+    -apple-system,
+    sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -96,7 +100,9 @@ a {
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
   cursor: grab;
   /* Ring via box-shadow so selection never changes the node's size. */
-  transition: box-shadow 120ms ease, background-color 120ms ease;
+  transition:
+    box-shadow 120ms ease,
+    background-color 120ms ease;
 }
 
 .mm-node:hover {
@@ -216,7 +222,10 @@ a {
   border-radius: 10px;
   background: #fff;
   color: var(--branch);
-  font: 600 11px/1 var(--font-geist-sans), system-ui, sans-serif;
+  font:
+    600 11px/1 var(--font-geist-sans),
+    system-ui,
+    sans-serif;
   cursor: pointer;
   opacity: 0;
   transition: opacity 120ms ease;
@@ -265,4 +274,151 @@ a {
   .mm-node--generating::after {
     animation: none;
   }
+}
+
+/* ---------- Body + AI modeling panel ---------- */
+
+.mm-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+.mm-panel {
+  width: 360px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: #fff;
+  border-left: 1px solid var(--border);
+}
+
+.mm-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 44px;
+  padding: 0 8px 0 16px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+@media (max-width: 720px) {
+  .mm-panel {
+    position: absolute;
+    inset: 52px 0 0 auto;
+    width: min(360px, 100vw);
+    z-index: 20;
+    box-shadow: -8px 0 24px rgba(15, 23, 42, 0.12);
+  }
+}
+
+/* ---------- Class nodes ---------- */
+
+.mm-node--class {
+  min-width: 140px;
+  max-width: 320px;
+  padding: 0;
+  border-left-width: 1px;
+  border-top: 4px solid var(--branch);
+  border-radius: 6px;
+  overflow: visible;
+}
+
+.mm-class__header {
+  padding: 6px 12px;
+  text-align: center;
+}
+
+.mm-class__stereotype {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.3;
+}
+
+.mm-class__name {
+  font-weight: 650;
+}
+
+.mm-class__name--italic {
+  font-style: italic;
+}
+
+.mm-class__compartment {
+  min-height: 10px;
+  padding: 4px 12px;
+  border-top: 1px solid var(--border);
+  list-style: none;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.mm-class__compartment:empty {
+  padding: 0;
+  min-height: 8px;
+}
+
+/* Nodes the AI added from its own knowledge rather than the context. */
+.mm-node--inferred {
+  border-style: dashed;
+}
+
+/* ---------- Links ---------- */
+
+:root {
+  --link: #475569;
+  --link-fill: #fff;
+}
+
+.mm-link-markers {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
+
+.mm-link-handle.react-flow__handle {
+  width: 10px;
+  height: 10px;
+  bottom: -6px;
+  border: 1.5px solid var(--link);
+  background: #fff;
+  cursor: crosshair;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.mm-node:hover .mm-link-handle,
+.mm-node--selected .mm-link-handle {
+  opacity: 1;
+}
+
+.mm-link-handle.react-flow__handle:hover {
+  background: var(--link);
+}
+
+.react-flow__edge-link {
+  cursor: pointer;
+}
+
+.react-flow__edge-link:hover .react-flow__edge-path {
+  stroke-width: 2.5 !important;
+}
+
+.mm-link-label {
+  position: absolute;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--link);
+  font-size: 11px;
+  line-height: 16px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.mm-link-label--summary {
+  font-style: italic;
 }

@@ -7,6 +7,7 @@ import type {
   MindMapActions,
   MindMapState,
 } from '@/components/organisms/MindMapStore/useMindMapStore';
+import type {AiSettings} from '@/components/molecules/AiDiagram/useAiSettings';
 
 const normalize = (text: string) => text.trim().toLowerCase();
 
@@ -17,6 +18,7 @@ const normalize = (text: string) => text.trim().toLowerCase();
  */
 export function useGenerateIdeas(
   stateRef: RefObject<MindMapState>,
+  settingsRef: RefObject<AiSettings>,
   actions: MindMapActions,
   notify: (message: string, severity?: 'success' | 'error' | 'info') => void,
 ) {
@@ -34,7 +36,10 @@ export function useGenerateIdeas(
         const res = await fetch('/api/generateContextualNodes', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({input: getMindMapContextForNode(root, nodeId)}),
+          body: JSON.stringify({
+            input: getMindMapContextForNode(root, nodeId),
+            model: settingsRef.current?.model,
+          }),
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok || !Array.isArray(data.nodes)) {
@@ -67,6 +72,6 @@ export function useGenerateIdeas(
         actions.setGenerating(nodeId, false);
       }
     },
-    [stateRef, actions, notify],
+    [stateRef, settingsRef, actions, notify],
   );
 }

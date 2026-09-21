@@ -5,6 +5,10 @@ import type {MindMapActions, MindMapState} from './useMindMapStore';
 /** Store actions plus app-level services that depend on them. */
 export type AppActions = MindMapActions & {
   generateIdeas: (nodeId: string) => void;
+  /** Adds one level of AI detail (and link changes) to a node. */
+  expandNode: (nodeId: string) => void;
+  /** Adds one level of AI detail across the whole map. */
+  expandAll: () => void;
   notify: (message: string, severity?: 'success' | 'error' | 'info') => void;
 };
 
