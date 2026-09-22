@@ -49,7 +49,10 @@ function neighbour(
 ): MindNode | undefined {
   switch (direction) {
     case 'left':
-      return node.parentId ? findNode(root, node.parentId) : undefined;
+      // Floating nodes aren't part of the root's branch.
+      return node.parentId && !node.floating
+        ? findNode(root, node.parentId)
+        : undefined;
     case 'right':
       if (node.collapsed || node.children.length === 0) return undefined;
       // The child nearest the parent's vertical centre.
@@ -64,11 +67,24 @@ function neighbour(
   }
 }
 
-const ARROWS: Record<string, 'up' | 'down' | 'left' | 'right'> = {
+type Direction = 'up' | 'down' | 'left' | 'right';
+
+const ARROWS: Record<string, Direction> = {
   ArrowUp: 'up',
   ArrowDown: 'down',
   ArrowLeft: 'left',
   ArrowRight: 'right',
+};
+
+/**
+ * Arrow keys follow the tree as drawn: in a top-down tree, up/down move
+ * between parent and child and left/right between siblings.
+ */
+const TOP_DOWN: Record<Direction, Direction> = {
+  up: 'left',
+  down: 'right',
+  left: 'up',
+  right: 'down',
 };
 
 export function useMindMapKeyboardShortcuts(
@@ -81,9 +97,15 @@ export function useMindMapKeyboardShortcuts(
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      const {root, selectedId, editing, richEditorId} = stateRef.current;
+      const {root, selectedId, editing, richEditorId, linkingFrom, layout} =
+        stateRef.current;
       if (e.defaultPrevented || e.isComposing || editing || richEditorId)
         return;
+      if (linkingFrom && e.key === 'Escape') {
+        actions.stopLinking();
+        e.preventDefault();
+        return;
+      }
       if (belongsToAnotherElement(e.target)) return;
 
       const node = findNode(root, selectedId);
@@ -126,7 +148,8 @@ export function useMindMapKeyboardShortcuts(
             return (actions.redo(), true);
         }
 
-        const direction = ARROWS[e.key];
+        const arrow = ARROWS[e.key];
+        const direction = arrow && layout === 'tree' ? TOP_DOWN[arrow] : arrow;
         if (direction && !e.metaKey && !e.ctrlKey && !e.altKey) {
           if (direction === 'right' && node.collapsed) {
             actions.toggleCollapsed(node.id, false);

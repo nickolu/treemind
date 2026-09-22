@@ -380,14 +380,16 @@ a {
 }
 
 .mm-link-handle.react-flow__handle {
-  width: 10px;
-  height: 10px;
-  bottom: -6px;
-  border: 1.5px solid var(--link);
+  width: 14px;
+  height: 14px;
+  bottom: -8px;
+  border: 2px solid var(--link);
   background: #fff;
   cursor: crosshair;
   opacity: 0;
-  transition: opacity 120ms ease;
+  transition:
+    opacity 120ms ease,
+    transform 120ms ease;
 }
 
 .mm-node:hover .mm-link-handle,
@@ -397,6 +399,7 @@ a {
 
 .mm-link-handle.react-flow__handle:hover {
   background: var(--link);
+  transform: translate(-50%, 0) scale(1.2);
 }
 
 .react-flow__edge-link {
@@ -421,4 +424,338 @@ a {
 
 .mm-link-label--summary {
   font-style: italic;
+}
+
+/* ---------- Link mode ---------- */
+
+.mm-canvas--linking .react-flow__node,
+.mm-canvas--linking .react-flow__pane {
+  cursor: crosshair;
+}
+
+.mm-canvas--linking .mm-node:hover {
+  box-shadow:
+    0 0 0 2px #fff,
+    0 0 0 4px var(--link);
+}
+
+.mm-node--link-source,
+.mm-node--link-source:hover {
+  box-shadow:
+    0 0 0 2px #fff,
+    0 0 0 4px var(--accent);
+}
+
+.mm-link-preview {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.mm-link-preview line {
+  stroke: var(--link);
+  stroke-width: 1.5;
+  stroke-dasharray: 6 4;
+}
+
+.mm-link-hint {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 11;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--foreground);
+  color: #fff;
+  font-size: 13px;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.18);
+  pointer-events: none;
+}
+
+/* ---------- Containers (diagram layouts) ---------- */
+
+/* The box is see-through: links and nodes inside stay clickable. Only the
+   header (and its controls) take the pointer. */
+.react-flow__node.mm-rf-container {
+  pointer-events: none !important;
+}
+
+.mm-node--container {
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  padding: 0;
+  border: 1.5px solid var(--branch);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--branch) 4%, transparent);
+  box-shadow: none;
+}
+
+.mm-node--container:hover {
+  box-shadow: none;
+}
+
+.mm-container__header {
+  display: flex;
+  align-items: center;
+  height: 36px;
+  padding: 0 28px 0 12px;
+  border-bottom: 1px solid color-mix(in srgb, var(--branch) 25%, transparent);
+  color: var(--branch);
+  font-weight: 650;
+  pointer-events: auto;
+  cursor: grab;
+}
+
+.mm-container__title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mm-node--container .mm-collapse {
+  top: 18px;
+  pointer-events: auto;
+}
+
+.mm-node--container .mm-link-handle {
+  pointer-events: auto;
+}
+
+/* ---------- Shapes ---------- */
+
+.mm-node--shape {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  text-align: center;
+}
+
+.mm-node--shape:hover {
+  box-shadow: none;
+}
+
+.mm-shape__outline {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.mm-shape__outline path {
+  fill: #fff;
+  stroke: var(--branch);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+}
+
+.mm-shape__label {
+  position: relative;
+}
+
+.mm-shape--rectangle,
+.mm-shape--rounded,
+.mm-shape--state,
+.mm-shape--terminator,
+.mm-shape--ellipse,
+.mm-shape--usecase,
+.mm-shape--component {
+  border: 1.5px solid var(--branch);
+  background: #fff;
+}
+
+.mm-shape--rectangle,
+.mm-shape--component {
+  border-radius: 2px;
+}
+
+.mm-shape--rounded {
+  border-radius: 12px;
+}
+
+.mm-shape--state {
+  border-radius: 16px;
+  padding: 10px 18px;
+}
+
+.mm-shape--terminator {
+  border-radius: 999px;
+  padding: 10px 24px;
+}
+
+.mm-shape--ellipse,
+.mm-shape--usecase {
+  min-width: 120px;
+  min-height: 56px;
+  padding: 14px 28px;
+  border-radius: 50%;
+}
+
+.mm-shape--diamond {
+  min-width: 140px;
+  min-height: 72px;
+  padding: 20px 36px;
+}
+
+.mm-shape--note {
+  padding: 10px 24px 10px 12px;
+  text-align: left;
+}
+
+.mm-shape--package {
+  min-width: 120px;
+  padding: 22px 14px 10px;
+}
+
+.mm-shape--data {
+  padding: 10px 30px;
+}
+
+.mm-shape--document {
+  padding: 10px 14px 20px;
+}
+
+.mm-shape--database {
+  min-width: 110px;
+  padding: 24px 16px 16px;
+}
+
+.mm-shape--component {
+  padding: 10px 36px 10px 14px;
+}
+
+.mm-shape__badge {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  width: 16px;
+  height: 16px;
+  fill: #fff;
+  stroke: var(--branch);
+  stroke-width: 1.2;
+}
+
+/* Figures: a small symbol with the name underneath, no box. */
+.mm-node--figure {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  padding: 4px 8px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  font-size: 13px;
+}
+
+.mm-node--figure:hover {
+  box-shadow: none;
+}
+
+.mm-figure {
+  width: 28px;
+  height: 28px;
+  fill: #fff;
+  stroke: var(--branch);
+  stroke-width: 1.8;
+  overflow: visible;
+}
+
+.mm-figure--actor {
+  width: 30px;
+  height: 48px;
+  fill: none;
+}
+
+.mm-figure--interface {
+  width: 22px;
+  height: 22px;
+}
+
+.mm-figure__solid {
+  fill: var(--branch);
+}
+
+.mm-figure__label .mm-node__placeholder {
+  font-size: 12px;
+}
+
+/* ---------- Shape picker ---------- */
+
+.mm-shape-option.MuiButtonBase-root {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 2px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: var(--foreground);
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+.mm-shape-option.MuiButtonBase-root:hover {
+  background: #f1f5f9;
+}
+
+.mm-shape-option--current.MuiButtonBase-root {
+  border-color: var(--accent);
+  background: #eef2ff;
+}
+
+.mm-glyph {
+  display: block;
+  width: 40px;
+  height: 26px;
+  fill: #fff;
+  stroke: var(--foreground);
+  stroke-width: 1.4;
+}
+
+.mm-glyph .mm-glyph__accent {
+  stroke: var(--accent);
+  stroke-width: 3;
+}
+
+.mm-glyph--figure {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mm-glyph--figure .mm-figure {
+  width: 20px;
+  height: 22px;
+  stroke: var(--foreground);
+}
+
+.mm-glyph--figure .mm-figure__solid {
+  fill: var(--foreground);
+}
+
+/* Shapes, figures and containers have no box-shadow ring of their own, so
+   selection and drop targets are shown with an outline around them. */
+.mm-node--shape.mm-node--selected,
+.mm-node--figure.mm-node--selected,
+.mm-node--container.mm-node--selected,
+.mm-node--shape.mm-node--drop-target,
+.mm-node--figure.mm-node--drop-target,
+.mm-node--container.mm-node--drop-target {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.mm-node--container.mm-node--drop-target {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
 }
