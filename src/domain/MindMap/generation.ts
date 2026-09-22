@@ -9,6 +9,7 @@ import {
 } from './tree';
 import {LinkKind, MindLink, createLink, hasLink} from './links';
 import {htmlToText, textToHtml} from './html';
+import {NodeShape} from './shapes';
 
 /** AI output, already mapped from prompt refs to real node / link ids. */
 export interface Generation {
@@ -18,6 +19,7 @@ export interface Generation {
     parentId: string;
     text: string;
     umlClass?: UmlClass;
+    shape?: NodeShape;
     origin?: NodeOrigin;
   }[];
   /** Class members for existing nodes, and optionally a new root name. */
@@ -64,6 +66,7 @@ export function applyGeneration(
     const node: MindNode = {
       ...createNode(parentId, textToHtml(spec.text), spec.id),
       ...(spec.umlClass ? {umlClass: spec.umlClass} : {}),
+      ...(spec.shape ? {shape: spec.shape} : {}),
       ...(spec.origin ? {origin: spec.origin} : {}),
     };
     tree = insertChildren(tree, parentId, [node]);

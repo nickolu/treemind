@@ -69,8 +69,10 @@ export function MindMapLegend() {
       <Divider sx={{my: 1}} />
       <Typography variant="body2" color="text.secondary">
         Drag a node onto another to move it there, or up/down to reorder.
-        Double-click to edit. Drag the dot under a node onto another node to
-        link them; click a link to change its type or label.
+        Double-click to edit. Link nodes with the link button on a selected
+        node, or drag the dot under a node onto another; click a link to change
+        its type or label. Double-click empty canvas to add a node that stands
+        on its own.
       </Typography>
     </Box>
   );

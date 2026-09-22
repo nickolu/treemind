@@ -1,16 +1,26 @@
 'use client';
-import {CSSProperties, memo, MouseEvent, ReactNode} from 'react';
+import {CSSProperties, memo, MouseEvent, ReactNode, useState} from 'react';
 import {Handle, NodeProps, NodeToolbar, Position} from 'reactflow';
 import {CircularProgress, IconButton, Tooltip} from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
-import ClassOutlinedIcon from '@mui/icons-material/ClassOutlined';
+import AddLinkIcon from '@mui/icons-material/AddLink';
+import CategoryOutlinedIcon from '@mui/icons-material/CategoryOutlined';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import LayersOutlinedIcon from '@mui/icons-material/LayersOutlined';
+import LinkOffIcon from '@mui/icons-material/LinkOff';
 import TextFieldsIcon from '@mui/icons-material/TextFields';
-import TopicOutlinedIcon from '@mui/icons-material/TopicOutlined';
-import {NodeOrigin, UmlClass, createUmlClass} from '@/domain/MindMap/tree';
+import {NodeOrigin, UmlClass} from '@/domain/MindMap/tree';
+import {NodeShape} from '@/domain/MindMap/shapes';
+import {
+  ComponentBadge,
+  FIGURE_SHAPES,
+  ShapeFigure,
+  ShapeOutline,
+  hasOutline,
+} from '@/components/atoms/NodeShape';
+import {ShapePicker} from '@/components/molecules/ShapePicker';
 import {NodeHtmlRenderer} from '@/components/atoms/NodeHtmlRenderer';
 import {InlineNodeEditor} from '@/components/atoms/InlineNodeEditor';
 import {useMindMapActions} from '@/components/organisms/MindMapStore/MindMapStoreContext';
@@ -29,6 +39,12 @@ export interface MindMapNodeData {
   isDropTarget: boolean;
   umlClass?: UmlClass;
   origin?: NodeOrigin;
+  shape?: NodeShape;
+  /** Drawn as a box around its children (diagram layouts). */
+  container: boolean;
+  floating: boolean;
+  /** Link mode is drawing a link from this node. */
+  isLinkSource: boolean;
 }
 
 /** Abstract types and interfaces are named in italics, as in UML. */
@@ -54,7 +70,7 @@ function ToolbarButton({
   disabled,
 }: {
   title: string;
-  onClick: () => void;
+  onClick: (event: MouseEvent<HTMLButtonElement>) => void;
   children: ReactNode;
   disabled?: boolean;
 }) {
@@ -68,7 +84,7 @@ function ToolbarButton({
           onMouseDown={keepFocus}
           onClick={(event) => {
             event.stopPropagation();
-            onClick();
+            onClick(event);
           }}
         >
           {children}
@@ -85,13 +101,22 @@ function MindMapNodeView({
   dragging,
 }: NodeProps<MindMapNodeData>) {
   const actions = useMindMapActions();
+  const [shapeAnchor, setShapeAnchor] = useState<HTMLElement | null>(null);
   const hasChildren = data.childCount > 0;
   const uml = data.umlClass;
+  // Classes and containers have their own look; otherwise the shape applies.
+  const shape = !uml && !data.container ? data.shape : undefined;
+  const figure = shape && FIGURE_SHAPES.has(shape);
 
   const className = [
     'mm-node',
-    data.isRoot && 'mm-node--root',
+    data.container && 'mm-node--container',
+    data.isRoot && !data.container && !shape && 'mm-node--root',
     uml && 'mm-node--class',
+    shape && `mm-node--shape mm-shape--${shape}`,
+    figure && 'mm-node--figure',
+    data.floating && 'mm-node--floating',
+    data.isLinkSource && 'mm-node--link-source',
     data.origin === 'inferred' && 'mm-node--inferred',
     selected && 'mm-node--selected',
     data.isGenerating && 'mm-node--generating',
@@ -125,7 +150,22 @@ function MindMapNodeView({
         isConnectable={false}
       />
 
-      {uml ? (
+      {data.container ? (
+        <div className="mm-container__header">
+          <div className="mm-container__title">{title}</div>
+        </div>
+      ) : figure ? (
+        <>
+          <ShapeFigure shape={shape} />
+          <div className="mm-figure__label">{title}</div>
+        </>
+      ) : shape ? (
+        <>
+          {hasOutline(shape) && <ShapeOutline shape={shape} />}
+          {shape === 'component' && <ComponentBadge />}
+          <div className="mm-shape__label">{title}</div>
+        </>
+      ) : uml ? (
         <div className="mm-class">
           <div className="mm-class__header">
             {uml.stereotype && (
@@ -210,6 +250,20 @@ function MindMapNodeView({
             <LayersOutlinedIcon fontSize="small" />
           </ToolbarButton>
           <ToolbarButton
+            title="Link to another node (or drag the dot below the node)"
+            onClick={() => actions.startLinking(id)}
+          >
+            <AddLinkIcon fontSize="small" />
+          </ToolbarButton>
+          {!data.isRoot && (
+            <ToolbarButton
+              title="Shape…"
+              onClick={(event) => setShapeAnchor(event.currentTarget)}
+            >
+              <CategoryOutlinedIcon fontSize="small" />
+            </ToolbarButton>
+          )}
+          <ToolbarButton
             title={
               uml
                 ? `Edit class (${shortcutLabel('richEditor')})`
@@ -223,18 +277,12 @@ function MindMapNodeView({
               <TextFieldsIcon fontSize="small" />
             )}
           </ToolbarButton>
-          {!data.isRoot && (
+          {!data.isRoot && !data.floating && (
             <ToolbarButton
-              title={uml ? 'Change to a topic' : 'Change to a class'}
-              onClick={() =>
-                actions.setUmlClass(id, uml ? null : createUmlClass())
-              }
+              title="Detach from its parent (stands on its own)"
+              onClick={() => actions.detach(id)}
             >
-              {uml ? (
-                <TopicOutlinedIcon fontSize="small" />
-              ) : (
-                <ClassOutlinedIcon fontSize="small" />
-              )}
+              <LinkOffIcon fontSize="small" />
             </ToolbarButton>
           )}
           {!data.isRoot && (
@@ -247,6 +295,15 @@ function MindMapNodeView({
           )}
         </div>
       </NodeToolbar>
+      <ShapePicker
+        anchor={shapeAnchor}
+        current={uml ? 'class' : (data.shape ?? null)}
+        onPick={(choice) => {
+          actions.setShape(id, choice);
+          setShapeAnchor(null);
+        }}
+        onClose={() => setShapeAnchor(null)}
+      />
     </div>
   );
 }
