@@ -10,6 +10,13 @@ import {
 } from 'reactflow';
 import {LINK_KINDS, LinkKind, LinkMarker} from '@/domain/MindMap/links';
 
+/**
+ * How links avoid the nodes they'd otherwise cross: in a mind map nodes are
+ * stacked in columns (loop out to the right), in a top-down tree they sit in
+ * rows (loop out below); elsewhere links go straight.
+ */
+export type LinkRoute = 'right' | 'below' | 'direct';
+
 export interface LinkEdgeData {
   /** Links drawn by this edge (several when both ends are collapsed away). */
   linkIds: string[];
@@ -20,13 +27,14 @@ export interface LinkEdgeData {
   summarized: boolean;
   /** Bends the edge sideways so parallel links don't overlap. */
   offset: number;
+  route: LinkRoute;
 }
 
 const markerUrl = (marker: LinkMarker) =>
   marker ? `url(#mm-marker-${marker})` : undefined;
 
 /** Where the line from the node's centre towards (dx, dy) leaves its box. */
-function borderPoint(node: Node, dx: number, dy: number, gap: number) {
+export function borderPoint(node: Node, dx: number, dy: number, gap: number) {
   const w = (node.width ?? 0) / 2;
   const h = (node.height ?? 0) / 2;
   const cx = (node.positionAbsolute?.x ?? 0) + w;
@@ -41,7 +49,7 @@ function borderPoint(node: Node, dx: number, dy: number, gap: number) {
   return {x: cx + ux * t, y: cy + uy * t};
 }
 
-const centre = (node: Node) => ({
+export const centre = (node: Node) => ({
   x: (node.positionAbsolute?.x ?? 0) + (node.width ?? 0) / 2,
   y: (node.positionAbsolute?.y ?? 0) + (node.height ?? 0) / 2,
 });
@@ -49,16 +57,42 @@ const centre = (node: Node) => ({
 const right = (node: Node) =>
   (node.positionAbsolute?.x ?? 0) + (node.width ?? 0);
 
+const bottom = (node: Node) =>
+  (node.positionAbsolute?.y ?? 0) + (node.height ?? 0);
+
 /** True when one node is (at least partly) above the other. */
 function sameColumn(a: Node, b: Node) {
   const left = Math.max(a.positionAbsolute?.x ?? 0, b.positionAbsolute?.x ?? 0);
   return Math.min(right(a), right(b)) - left > 0;
 }
 
+/** True when one node is (at least partly) beside the other. */
+function sameRow(a: Node, b: Node) {
+  const top = Math.max(a.positionAbsolute?.y ?? 0, b.positionAbsolute?.y ?? 0);
+  return Math.min(bottom(a), bottom(b)) - top > 0;
+}
+
 interface Route {
   path: string;
   labelX: number;
   labelY: number;
+}
+
+/**
+ * Nodes lined up in a row of a top-down tree would be joined by a line
+ * through everything between them, so those links loop out below instead.
+ */
+function belowRoute(source: Node, target: Node, offset: number): Route {
+  const gap = 2;
+  const start = {x: centre(source).x, y: bottom(source) + gap};
+  const end = {x: centre(target).x, y: bottom(target) + gap};
+  const bulge = 36 + Math.abs(end.x - start.x) * 0.15 + Math.abs(offset);
+  const y = Math.max(start.y, end.y) + bulge;
+  return {
+    path: `M ${start.x},${start.y} C ${start.x},${y} ${end.x},${y} ${end.x},${end.y}`,
+    labelX: (start.x + end.x) / 2,
+    labelY: (start.y + 6 * y + end.y) / 8,
+  };
 }
 
 /**
@@ -115,9 +149,12 @@ function LinkEdgeView({id, source, target, data}: EdgeProps<LinkEdgeData>) {
   );
   if (!sourceNode?.width || !targetNode?.width || !data) return null;
 
-  const {path, labelX, labelY} = sameColumn(sourceNode, targetNode)
-    ? sideRoute(sourceNode, targetNode, data.offset)
-    : directRoute(sourceNode, targetNode, data.offset);
+  const {path, labelX, labelY} =
+    data.route === 'right' && sameColumn(sourceNode, targetNode)
+      ? sideRoute(sourceNode, targetNode, data.offset)
+      : data.route === 'below' && sameRow(sourceNode, targetNode)
+        ? belowRoute(sourceNode, targetNode, data.offset)
+        : directRoute(sourceNode, targetNode, data.offset);
 
   const info = data.kind ? LINK_KINDS[data.kind] : null;
   const count = data.linkIds.length;

@@ -20,21 +20,31 @@ import ReactFlow, {
   useReactFlow,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
-import {MindNode, findNode} from '@/domain/MindMap/tree';
+import {MindNode, Point, findNode} from '@/domain/MindMap/tree';
+import {htmlToText} from '@/domain/MindMap/html';
 import {MindMapNode, MindMapNodeData} from '@/components/molecules/MindMapNode';
 import {
   useMindMapActions,
   useMindMapState,
 } from '@/components/organisms/MindMapStore/MindMapStoreContext';
 import {isMac} from '@/components/molecules/MindMapKeyboardEvents/shortcuts';
-import {DEFAULT_SIZE, Layout, Size, XY, computeLayout} from './layout';
+import {
+  DEFAULT_SIZE,
+  Layout,
+  LayoutNode,
+  Size,
+  XY,
+  hasPinnedNodes,
+} from './layout';
+import {useCanvasLayout} from './useCanvasLayout';
 import {useAnimatedPositions} from './useAnimatedPositions';
 import {LinkEdge, LinkEdgeData, LinkMarkers} from './LinkEdge';
+import {TreeEdge} from './TreeEdge';
 import {LinkMenu, LinkMenuTarget} from './LinkMenu';
-import {MindLink} from '@/domain/MindMap/links';
+import {Z_NODE, linkEdges, treeEdges} from './edges';
 
 const nodeTypes = {mindMapNode: MindMapNode};
-const edgeTypes = {link: LinkEdge};
+const edgeTypes = {link: LinkEdge, tree: TreeEdge};
 const FIT_VIEW_OPTIONS = {padding: 0.2, maxZoom: 1};
 const FOLLOW_MARGIN = 48;
 
@@ -51,98 +61,45 @@ function visibleSubtreeIds(node: MindNode, ids = new Set<string>()) {
   return ids;
 }
 
-/** The node under a point in flow coordinates, if any. */
-function nodeAt(layout: Layout, point: XY, exclude: (id: string) => boolean) {
-  return layout.nodes.find(
-    (n) =>
-      !exclude(n.id) &&
-      point.x >= n.position.x &&
-      point.x <= n.position.x + n.size.width &&
-      point.y >= n.position.y &&
-      point.y <= n.position.y + n.size.height,
-  );
-}
-
-function parentIds(node: MindNode, map = new Map<string, string>()) {
-  node.children.forEach((child) => {
-    map.set(child.id, node.id);
-    parentIds(child, map);
-  });
-  return map;
-}
+const contains = (n: LayoutNode, point: XY) =>
+  point.x >= n.position.x &&
+  point.x <= n.position.x + n.size.width &&
+  point.y >= n.position.y &&
+  point.y <= n.position.y + n.size.height;
 
 /**
- * One edge per pair of visible nodes. A link whose end is inside a collapsed
- * branch is drawn to that branch's visible ancestor instead, and several such
- * links are summarized as one, so collapsing and expanding shows the links at
- * the level of detail on screen.
+ * What's under a point: an ordinary node if there is one, otherwise the
+ * innermost container (containers come before their contents in the layout).
  */
-function linkEdges(
-  root: MindNode,
-  links: MindLink[],
+function nodeAt(
   layout: Layout,
-): Edge<LinkEdgeData>[] {
-  if (links.length === 0) return [];
-  const parents = parentIds(root);
-  const visible = (id: string) => {
-    let current: string | undefined = id;
-    while (current && !layout.byId.has(current)) current = parents.get(current);
-    return current;
-  };
-
-  const groups = new Map<
-    string,
-    {from: string; to: string; links: MindLink[]}
-  >();
-  links.forEach((link) => {
-    const from = visible(link.from);
-    const to = visible(link.to);
-    if (!from || !to || from === to) return;
-    const key = `${from}->${to}`;
-    const group = groups.get(key) ?? {from, to, links: []};
-    group.links.push(link);
-    groups.set(key, group);
-  });
-
-  // Spread links between the same two nodes (either direction) apart.
-  const perPair = new Map<string, number>();
-  return [...groups.values()].map(({from, to, links: group}) => {
-    const pair = from < to ? `${from}|${to}` : `${to}|${from}`;
-    const index = perPair.get(pair) ?? 0;
-    perPair.set(pair, index + 1);
-    const magnitude = Math.ceil(index / 2) * 24;
-    // Opposite directions have opposite normals, so the sign keeps them apart.
-    const offset = (index % 2 ? 1 : -1) * magnitude * (from < to ? 1 : -1);
-
-    const single = group.length === 1 ? group[0] : null;
-    const summarized = group.some((l) => l.from !== from || l.to !== to);
-    return {
-      id: `link:${from}->${to}`,
-      source: from,
-      target: to,
-      sourceHandle: 'tree',
-      type: 'link',
-      zIndex: 1,
-      data: {
-        linkIds: group.map((l) => l.id),
-        kind: single?.kind ?? null,
-        label: single?.label ?? '',
-        summarized,
-        offset,
-      },
-    };
-  });
+  point: XY,
+  exclude: (id: string) => boolean,
+  containersOnly = false,
+) {
+  const hits = layout.nodes.filter((n) => !exclude(n.id) && contains(n, point));
+  const plain = containersOnly ? undefined : hits.find((n) => !n.container);
+  return plain ?? hits.filter((n) => n.container).at(-1);
 }
 
 export function MindMapCanvas() {
-  const {root, links, selectedId, editing, generatingIds} = useMindMapState();
+  const {
+    root,
+    links,
+    layout: layoutKind,
+    selectedId,
+    editing,
+    generatingIds,
+    linkingFrom,
+  } = useMindMapState();
   const actions = useMindMapActions();
   const reactFlow = useReactFlow();
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Measured node sizes feed the layout, so it adapts to real content.
   const [sizes, setSizes] = useState<Map<string, Size>>(() => new Map());
-  const layout = useMemo(() => computeLayout(root, sizes), [root, sizes]);
+  const layout = useCanvasLayout(layoutKind, root, links, sizes);
+  const freeform = layout.kind === 'freeform';
 
   const [drag, setDrag] = useState<DragState | null>(null);
   const animated = useAnimatedPositions(layout, drag !== null);
@@ -153,13 +110,16 @@ export function MindMapCanvas() {
   const nodes = useMemo<Node<MindMapNodeData>[]>(() => {
     const generating = new Set(generatingIds);
     const nextCache = new Map<string, MindMapNodeData>();
-    const result = layout.nodes.map((layoutNode) => {
-      const treeNode = findNode(root, layoutNode.id)!;
+    const result = layout.nodes.flatMap((layoutNode) => {
+      // An async layout can briefly lag behind the tree.
+      const treeNode = findNode(root, layoutNode.id);
+      if (!treeNode) return [];
+      const isRoot = treeNode.id === root.id;
       const data: MindMapNodeData = {
         html: treeNode.html,
         depth: layoutNode.depth,
         color: layoutNode.color,
-        isRoot: treeNode.id === root.id,
+        isRoot,
         childCount: treeNode.children.length,
         collapsed: !!treeNode.collapsed,
         isEditing: editing?.id === treeNode.id,
@@ -169,6 +129,10 @@ export function MindMapCanvas() {
         isDropTarget: drag?.dropTargetId === treeNode.id,
         umlClass: treeNode.umlClass,
         origin: treeNode.origin,
+        shape: treeNode.shape,
+        container: !!layoutNode.container,
+        floating: !!treeNode.floating,
+        isLinkSource: linkingFrom === treeNode.id,
       };
       const cached = dataCache.current.get(treeNode.id);
       const stable =
@@ -182,44 +146,72 @@ export function MindMapCanvas() {
 
       const base = animated.get(layoutNode.id);
       const isDragged = drag?.subtree.has(layoutNode.id);
+      // Containers are sized by the layout; other nodes by their content.
       // Unmeasured nodes get a provisional size: React Flow hides nodes
       // without one, and a hidden node's editor can't take focus.
-      const size = sizes.get(layoutNode.id) ?? DEFAULT_SIZE;
-      return {
-        id: layoutNode.id,
-        type: 'mindMapNode',
-        position: isDragged
-          ? {x: base.x + drag!.offset.x, y: base.y + drag!.offset.y}
-          : base,
-        data: stable,
-        selected: layoutNode.id === selectedId,
-        draggable: layoutNode.id !== root.id && !stable.isEditing,
-        zIndex: isDragged ? 10 : undefined,
-        width: size.width,
-        height: size.height,
-      };
+      const size = layoutNode.container
+        ? layoutNode.size
+        : (sizes.get(layoutNode.id) ?? DEFAULT_SIZE);
+      return [
+        {
+          id: layoutNode.id,
+          type: 'mindMapNode',
+          position: isDragged
+            ? {x: base.x + drag!.offset.x, y: base.y + drag!.offset.y}
+            : base,
+          data: stable,
+          selected: layoutNode.id === selectedId,
+          draggable: (!isRoot || freeform) && !stable.isEditing,
+          // Containers stack by depth below edges; nodes sit above both.
+          zIndex: layoutNode.container
+            ? layoutNode.depth
+            : Z_NODE + (isDragged ? 10 : 0),
+          width: size.width,
+          height: size.height,
+          ...(layoutNode.container
+            ? {
+                className: 'mm-rf-container',
+                style: {width: size.width, height: size.height},
+              }
+            : {}),
+        },
+      ];
     });
     dataCache.current = nextCache;
     return result;
-  }, [layout, root, animated, drag, sizes, selectedId, editing, generatingIds]);
+  }, [
+    layout,
+    root,
+    animated,
+    drag,
+    sizes,
+    selectedId,
+    editing,
+    generatingIds,
+    linkingFrom,
+    freeform,
+  ]);
 
   const edges = useMemo<Edge[]>(
-    () => [
-      ...layout.nodes
-        .filter((n) => n.parentId)
-        .map((n) => ({
-          id: `${n.parentId}->${n.id}`,
-          source: n.parentId!,
-          sourceHandle: 'tree',
-          target: n.id,
-          type: 'default',
-          style: {stroke: n.color, strokeWidth: n.depth === 1 ? 3 : 2},
-          className: 'mm-edge',
-          focusable: false,
-        })),
-      ...linkEdges(root, links, layout),
-    ],
+    () => [...treeEdges(layout), ...linkEdges(root, links, layout)],
     [layout, root, links],
+  );
+
+  /** Current on-screen positions of every drawn node (freeform pinning). */
+  const displayedPositions = useCallback(() => {
+    const positions = new Map<string, Point>();
+    layout.nodes.forEach((n) => positions.set(n.id, animated.get(n.id)));
+    return positions;
+  }, [layout, animated]);
+
+  /**
+   * Freeform keeps the automatic arrangement until something is placed by
+   * hand; at that point every node is pinned where it is, so placing one
+   * node doesn't rearrange the others.
+   */
+  const pinsForFreeform = useCallback(
+    () => (hasPinnedNodes(root) ? new Map() : displayedPositions()),
+    [root, displayedPositions],
   );
 
   // Dragging from a node's link handle and dropping on another node links them.
@@ -264,26 +256,33 @@ export function MindMapCanvas() {
 
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => {
+      // Containers are sized by the layout, so their size isn't fed back.
       const measured = changes.filter(
         (c): c is Extract<NodeChange, {type: 'dimensions'}> =>
-          c.type === 'dimensions' && !!c.dimensions,
+          c.type === 'dimensions' &&
+          !!c.dimensions &&
+          !layout.byId.get(c.id)?.container,
       );
+      // Applied on the next frame: resizing containers inside React Flow's
+      // ResizeObserver callback would trigger a "ResizeObserver loop" error.
       if (measured.length) {
-        setSizes((prev) => {
-          let next: Map<string, Size> | null = null;
-          measured.forEach(({id, dimensions}) => {
-            const old = prev.get(id);
-            if (
-              old?.width === dimensions!.width &&
-              old?.height === dimensions!.height
-            ) {
-              return;
-            }
-            next ??= new Map(prev);
-            next.set(id, dimensions!);
-          });
-          return next ?? prev;
-        });
+        requestAnimationFrame(() =>
+          setSizes((prev) => {
+            let next: Map<string, Size> | null = null;
+            measured.forEach(({id, dimensions}) => {
+              const old = prev.get(id);
+              if (
+                old?.width === dimensions!.width &&
+                old?.height === dimensions!.height
+              ) {
+                return;
+              }
+              next ??= new Map(prev);
+              next.set(id, dimensions!);
+            });
+            return next ?? prev;
+          }),
+        );
       }
 
       // While dragging, React Flow reports the new position of the dragged
@@ -294,8 +293,8 @@ export function MindMapCanvas() {
       );
       if (moved) {
         setDrag((prev) => {
-          const origin = layout.byId.get(moved.id)?.position;
-          if (!prev || prev.id !== moved.id || !origin) return prev;
+          const origin = animated.get(moved.id);
+          if (!prev || prev.id !== moved.id) return prev;
           return {
             ...prev,
             offset: {
@@ -307,7 +306,7 @@ export function MindMapCanvas() {
       }
       // Selection and removal are owned by the store, so other changes are ignored.
     },
-    [layout],
+    [layout, animated],
   );
 
   const onNodeDragStart = useCallback(
@@ -325,7 +324,7 @@ export function MindMapCanvas() {
     [root, actions],
   );
 
-  // Highlight the node under the pointer as the new parent.
+  // Highlight where the node would go: a new parent, or (freeform) a container.
   const onNodeDrag = useCallback(
     (event: MouseEvent) => {
       const pointer = reactFlow.screenToFlowPosition({
@@ -334,7 +333,12 @@ export function MindMapCanvas() {
       });
       setDrag((prev) => {
         if (!prev) return prev;
-        const target = nodeAt(layout, pointer, (id) => prev.subtree.has(id));
+        const target = nodeAt(
+          layout,
+          pointer,
+          (id) => prev.subtree.has(id),
+          layout.kind === 'freeform',
+        );
         const dropTargetId = target?.id ?? null;
         return dropTargetId === prev.dropTargetId
           ? prev
@@ -345,9 +349,11 @@ export function MindMapCanvas() {
   );
 
   /**
-   * Dropping onto a node makes the dragged node its child. Dropping anywhere
-   * else reorders it among its siblings by vertical position; the layout
-   * then animates everything into place.
+   * Freeform: the node stays where it's dropped, inside whichever container
+   * it's dropped in (or unconnected, outside all of them). Other layouts:
+   * dropping onto a node makes the dragged node its child; in the mind map
+   * and top-down tree, dropping elsewhere reorders it among its siblings.
+   * Anything else snaps back into place.
    */
   const onNodeDragStop = useCallback(() => {
     if (!drag) return;
@@ -365,27 +371,61 @@ export function MindMapCanvas() {
     });
     animated.jumpTo(dropped);
     setDrag(null);
+    if (!dragged || !treeNode) return;
 
-    if (!dragged || !treeNode || !parent) return;
+    if (layout.kind === 'freeform') {
+      const positions = pinsForFreeform();
+      dropped.forEach((position, id) => positions.set(id, position));
+      if (!parent) return actions.setPositions(positions); // the root
+      const target = drag.dropTargetId;
+      if (target && (target !== parent.id || treeNode.floating)) {
+        actions.move(drag.id, target, undefined, false, positions);
+      } else if (!target && !treeNode.floating) {
+        actions.move(drag.id, root.id, undefined, true, positions);
+      } else {
+        actions.setPositions(positions);
+      }
+      return;
+    }
+
+    if (!parent) return;
     if (drag.dropTargetId && drag.dropTargetId !== parent.id) {
       actions.move(drag.id, drag.dropTargetId);
       return;
     }
+    if (layout.kind !== 'mindmap' && layout.kind !== 'tree') return;
 
-    const centerY =
-      dragged.position.y + drag.offset.y + dragged.size.height / 2;
+    // Reorder along the axis siblings are stacked on.
+    const horizontal = layout.kind === 'tree';
+    const centre = (n: LayoutNode, offset = 0) =>
+      horizontal
+        ? n.position.x + offset + n.size.width / 2
+        : n.position.y + offset + n.size.height / 2;
+    const draggedCentre = centre(
+      dragged,
+      horizontal ? drag.offset.x : drag.offset.y,
+    );
     const siblings = parent.children.filter((c) => c.id !== drag.id);
     const index = siblings.filter((sibling) => {
       const s = layout.byId.get(sibling.id);
-      return s && s.position.y + s.size.height / 2 < centerY;
+      return s && centre(s) < draggedCentre;
     }).length;
     const currentIndex = parent.children.findIndex((c) => c.id === drag.id);
-    if (index !== currentIndex) actions.move(drag.id, parent.id, index);
-  }, [drag, layout, root, animated, actions]);
+    if (index !== currentIndex) {
+      actions.move(drag.id, parent.id, index, !!treeNode.floating);
+    }
+  }, [drag, layout, root, animated, actions, pinsForFreeform]);
 
   const onNodeClick = useCallback(
-    (_: MouseEvent, node: Node) => actions.select(node.id),
-    [actions],
+    (_: MouseEvent, node: Node) => {
+      if (linkingFrom) {
+        if (node.id !== linkingFrom) actions.addLink(linkingFrom, node.id);
+        actions.stopLinking();
+        return;
+      }
+      actions.select(node.id);
+    },
+    [actions, linkingFrom],
   );
 
   // Classes have several fields, so they open in the class editor.
@@ -396,6 +436,61 @@ export function MindMapCanvas() {
         : actions.startEditing(node.id),
     [actions],
   );
+
+  const onPaneClick = useCallback(() => {
+    if (linkingFrom) actions.stopLinking();
+  }, [actions, linkingFrom]);
+
+  /**
+   * Double-clicking empty canvas adds a node there: inside the container
+   * under the pointer, or unconnected. (React Flow has no pane double-click
+   * event, so this listens on the wrapper.)
+   */
+  const onCanvasDoubleClick = useCallback(
+    (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (
+        !target.closest('.react-flow__pane') ||
+        target.closest(
+          '.react-flow__edge, .react-flow__controls, .react-flow__minimap, .mm-container__header',
+        )
+      ) {
+        return;
+      }
+      const point = reactFlow.screenToFlowPosition({
+        x: event.clientX,
+        y: event.clientY,
+      });
+      const container = nodeAt(layout, point, () => false, true);
+      if (freeform) {
+        const at = {x: point.x - DEFAULT_SIZE.width / 2, y: point.y - 20};
+        actions.addNodeAt(container?.id ?? null, at, pinsForFreeform());
+      } else {
+        actions.addNodeAt(container?.id ?? null);
+      }
+    },
+    [reactFlow, layout, freeform, actions, pinsForFreeform],
+  );
+
+  // Link mode: a line follows the pointer from the source node.
+  const [pointer, setPointer] = useState<XY | null>(null);
+  const linkSource = linkingFrom ? layout.byId.get(linkingFrom) : undefined;
+  let preview: {from: XY; to: XY} | null = null;
+  if (linkSource && pointer && containerRef.current) {
+    const rect = containerRef.current.getBoundingClientRect();
+    const position = animated.get(linkSource.id);
+    const screen = reactFlow.flowToScreenPosition({
+      x: position.x + linkSource.size.width / 2,
+      y: position.y + linkSource.size.height / 2,
+    });
+    preview = {
+      from: {x: screen.x - rect.left, y: screen.y - rect.top},
+      to: pointer,
+    };
+  }
+  const linkSourceName = linkingFrom
+    ? htmlToText(findNode(root, linkingFrom)?.html ?? '') || 'Untitled'
+    : '';
 
   // Keep the selected node on screen, panning as little as possible.
   const selectedLayout = layout.byId.get(selectedId);
@@ -436,8 +531,29 @@ export function MindMapCanvas() {
     reactFlow.fitView({...FIT_VIEW_OPTIONS, duration: 300});
   }, [root.id, nodesInitialized, reactFlow]);
 
+  // ...and when the layout changes, once nodes have animated into place.
+  const fittedKindRef = useRef(layout.kind);
+  useEffect(() => {
+    if (fittedKindRef.current === layout.kind) return;
+    fittedKindRef.current = layout.kind;
+    const timeout = setTimeout(
+      () => reactFlow.fitView({...FIT_VIEW_OPTIONS, duration: 300}),
+      260,
+    );
+    return () => clearTimeout(timeout);
+  }, [layout.kind, reactFlow]);
+
   return (
-    <div ref={containerRef} className="mm-canvas">
+    <div
+      ref={containerRef}
+      className={`mm-canvas ${linkingFrom ? 'mm-canvas--linking' : ''}`}
+      onDoubleClick={onCanvasDoubleClick}
+      onMouseMove={(event) => {
+        if (!linkingFrom || !containerRef.current) return;
+        const rect = containerRef.current.getBoundingClientRect();
+        setPointer({x: event.clientX - rect.left, y: event.clientY - rect.top});
+      }}
+    >
       <LinkMarkers />
       <ReactFlow
         nodes={nodes}
@@ -448,6 +564,7 @@ export function MindMapCanvas() {
         onConnectStart={onConnectStart}
         onConnectEnd={onConnectEnd}
         onEdgeClick={onEdgeClick}
+        onPaneClick={onPaneClick}
         connectionLineStyle={{stroke: 'var(--link)', strokeDasharray: '6 4'}}
         onNodeClick={onNodeClick}
         onNodeDoubleClick={onNodeDoubleClick}
@@ -461,6 +578,8 @@ export function MindMapCanvas() {
         nodeDragThreshold={4}
         edgesUpdatable={false}
         selectNodesOnDrag={false}
+        // A selected container must not jump above the nodes inside it.
+        elevateNodesOnSelect={false}
         zoomOnDoubleClick={false}
         panOnScroll
         // All keyboard handling is ours; turn off React Flow's built-in keys
@@ -488,6 +607,21 @@ export function MindMapCanvas() {
           maskColor="rgba(241, 245, 249, 0.7)"
         />
       </ReactFlow>
+      {preview && (
+        <svg className="mm-link-preview" aria-hidden>
+          <line
+            x1={preview.from.x}
+            y1={preview.from.y}
+            x2={preview.to.x}
+            y2={preview.to.y}
+          />
+        </svg>
+      )}
+      {linkingFrom && (
+        <div className="mm-link-hint" role="status">
+          Click a node to link it from “{linkSourceName}” · Esc to cancel
+        </div>
+      )}
       <LinkMenu target={linkMenu} onClose={() => setLinkMenu(null)} />
     </div>
   );

@@ -3,6 +3,7 @@ import {MindNode, UmlClass} from '@/domain/MindMap/tree';
 import {LinkKind, MindLink} from '@/domain/MindMap/links';
 import {Generation} from '@/domain/MindMap/generation';
 import {htmlToText} from '@/domain/MindMap/html';
+import {isNodeShape} from '@/domain/MindMap/shapes';
 
 /**
  * Contract between the client and /api/expandDiagram. The map is sent as
@@ -26,6 +27,8 @@ export interface ExpandDiagramResponse {
     parent: string;
     text: string;
     isClass: boolean;
+    /** A NodeShape id, or '' for a plain topic. */
+    shape: string;
     stereotype: string;
     attributes: string[];
     operations: string[];
@@ -50,14 +53,18 @@ const oneLine = (text: string) => text.replace(/\s+/g, ' ').trim();
 
 function describeNode(node: MindNode): string {
   const name = oneLine(htmlToText(node.html)) || '(empty)';
+  const floating = node.floating ? ' (floating: not part of n1)' : '';
   const uml = node.umlClass;
-  if (!uml) return name;
+  if (!uml) {
+    const shape = node.shape ? `[${node.shape}] ` : '';
+    return `${shape}${name}${floating}`;
+  }
   const stereotype = uml.stereotype ? ` «${oneLine(uml.stereotype)}»` : '';
   const members = [
     uml.attributes.map(oneLine).join('; '),
     uml.operations.map(oneLine).join('; '),
   ];
-  return `class ${name}${stereotype} { ${members[0]} | ${members[1]} }`;
+  return `class ${name}${stereotype} { ${members[0]} | ${members[1]} }${floating}`;
 }
 
 export interface DiagramPrompt {
@@ -157,6 +164,7 @@ export function toGeneration(
       id,
       parentId,
       text: spec.text,
+      shape: !spec.isClass && isNodeShape(spec.shape) ? spec.shape : undefined,
       umlClass: spec.isClass
         ? {
             stereotype: spec.stereotype,

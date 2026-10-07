@@ -5,6 +5,7 @@ import {
   Box,
   Divider,
   IconButton,
+  ListItemIcon,
   ListItemText,
   Menu,
   MenuItem,
@@ -23,8 +24,20 @@ import UnfoldMoreIcon from '@mui/icons-material/UnfoldMore';
 import FitScreenOutlinedIcon from '@mui/icons-material/FitScreenOutlined';
 import KeyboardOutlinedIcon from '@mui/icons-material/KeyboardOutlined';
 import ViewSidebarOutlinedIcon from '@mui/icons-material/ViewSidebarOutlined';
+import LanOutlinedIcon from '@mui/icons-material/LanOutlined';
+import HubOutlinedIcon from '@mui/icons-material/HubOutlined';
+import SchemaOutlinedIcon from '@mui/icons-material/SchemaOutlined';
+import OpenWithIcon from '@mui/icons-material/OpenWith';
+import AddBoxOutlinedIcon from '@mui/icons-material/AddBoxOutlined';
+import AutoFixHighOutlinedIcon from '@mui/icons-material/AutoFixHighOutlined';
+import CheckIcon from '@mui/icons-material/Check';
 import {createRoot} from '@/domain/MindMap/tree';
-import {createDocument} from '@/domain/MindMap/document';
+import {
+  LAYOUTS,
+  LAYOUT_IDS,
+  LayoutKind,
+  createDocument,
+} from '@/domain/MindMap/document';
 import {htmlToText} from '@/domain/MindMap/html';
 import {
   ExportFormat,
@@ -37,6 +50,14 @@ import {
 } from '@/components/organisms/MindMapStore/MindMapStoreContext';
 import {MindMapLegend} from '@/components/molecules/MindMapLegend';
 import {shortcutLabel} from '@/components/molecules/MindMapKeyboardEvents/shortcuts';
+
+const LAYOUT_ICONS: Record<LayoutKind, ReactNode> = {
+  mindmap: <AccountTreeOutlinedIcon fontSize="small" />,
+  tree: <LanOutlinedIcon fontSize="small" />,
+  radial: <HubOutlinedIcon fontSize="small" />,
+  diagram: <SchemaOutlinedIcon fontSize="small" />,
+  freeform: <OpenWithIcon fontSize="small" />,
+};
 
 /** Clicking a toolbar button shouldn't move keyboard focus off the map. */
 const keepFocus = (event: MouseEvent) => event.preventDefault();
@@ -80,13 +101,14 @@ export function AppToolbar({
   panelOpen: boolean;
   onTogglePanel: () => void;
 }) {
-  const {root, links, context, canUndo, canRedo} = useMindMapState();
+  const {root, links, context, layout, canUndo, canRedo} = useMindMapState();
   const actions = useMindMapActions();
   const reactFlow = useReactFlow();
   const [shortcutsAnchor, setShortcutsAnchor] = useState<HTMLElement | null>(
     null,
   );
   const [saveAnchor, setSaveAnchor] = useState<HTMLElement | null>(null);
+  const [layoutAnchor, setLayoutAnchor] = useState<HTMLElement | null>(null);
 
   const title = htmlToText(root.html) || 'Untitled';
 
@@ -119,7 +141,7 @@ export function AppToolbar({
 
   const handleSave = (format: ExportFormat) => {
     setSaveAnchor(null);
-    saveMindMapToFile({root, links, context}, format);
+    saveMindMapToFile({root, links, context, layout}, format);
   };
 
   return (
@@ -172,6 +194,18 @@ export function AppToolbar({
         </ToolButton>
         <Divider orientation="vertical" flexItem sx={{mx: 0.5}} />
         <ToolButton
+          title={`Layout: ${LAYOUTS[layout].name}`}
+          onClick={(event) => setLayoutAnchor(event.currentTarget)}
+        >
+          {LAYOUT_ICONS[layout]}
+        </ToolButton>
+        <ToolButton
+          title="Add a node that stands on its own (or double-click the canvas)"
+          onClick={() => actions.addNodeAt(null)}
+        >
+          <AddBoxOutlinedIcon fontSize="small" />
+        </ToolButton>
+        <ToolButton
           title="Collapse all"
           onClick={() => actions.setAllCollapsed(true)}
         >
@@ -206,6 +240,49 @@ export function AppToolbar({
           <KeyboardOutlinedIcon fontSize="small" />
         </ToolButton>
       </Box>
+
+      <Menu
+        open={!!layoutAnchor}
+        anchorEl={layoutAnchor}
+        onClose={() => setLayoutAnchor(null)}
+        anchorOrigin={{vertical: 'bottom', horizontal: 'right'}}
+        transformOrigin={{vertical: 'top', horizontal: 'right'}}
+      >
+        {LAYOUT_IDS.map((id) => (
+          <MenuItem
+            key={id}
+            selected={id === layout}
+            onClick={() => {
+              actions.setLayout(id);
+              setLayoutAnchor(null);
+            }}
+          >
+            <ListItemIcon>{LAYOUT_ICONS[id]}</ListItemIcon>
+            <ListItemText
+              primary={LAYOUTS[id].name}
+              secondary={LAYOUTS[id].description}
+            />
+            {id === layout && <CheckIcon fontSize="small" sx={{ml: 2}} />}
+          </MenuItem>
+        ))}
+        {layout === 'freeform' && <Divider />}
+        {layout === 'freeform' && (
+          <MenuItem
+            onClick={() => {
+              actions.clearPositions();
+              setLayoutAnchor(null);
+            }}
+          >
+            <ListItemIcon>
+              <AutoFixHighOutlinedIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText
+              primary="Tidy up"
+              secondary="Arrange everything automatically again"
+            />
+          </MenuItem>
+        )}
+      </Menu>
 
       <Menu
         open={!!saveAnchor}
