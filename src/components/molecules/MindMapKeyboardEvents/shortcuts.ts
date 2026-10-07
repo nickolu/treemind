@@ -23,6 +23,7 @@ export type ShortcutId =
   | 'addChild'
   | 'addSibling'
   | 'generate'
+  | 'addDetail'
   | 'edit'
   | 'richEditor'
   | 'toggleCollapse'
@@ -57,7 +58,14 @@ export const SHORTCUTS: Shortcut[] = [
     id: 'generate',
     keys: [`${MOD} Enter`],
     description: 'Generate ideas with AI',
-    matches: (e) => e.key === 'Enter' && isModKey(e) && !e.altKey,
+    matches: (e) =>
+      e.key === 'Enter' && isModKey(e) && !e.altKey && !e.shiftKey,
+  },
+  {
+    id: 'addDetail',
+    keys: [isMac ? '⌘ ⇧ Enter' : 'Ctrl Shift Enter'],
+    description: 'Add detail with AI (and update links)',
+    matches: (e) => e.key === 'Enter' && isModKey(e) && !e.altKey && e.shiftKey,
   },
   {
     id: 'edit',
@@ -68,7 +76,7 @@ export const SHORTCUTS: Shortcut[] = [
   {
     id: 'richEditor',
     keys: ['Shift Enter'],
-    description: 'Open formatted editor',
+    description: 'Open formatted editor (or class editor)',
     matches: (e) => e.key === 'Enter' && noModifiers(e) && e.shiftKey,
   },
   {

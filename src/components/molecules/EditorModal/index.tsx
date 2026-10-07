@@ -21,6 +21,7 @@ import {
   useMindMapState,
 } from '@/components/organisms/MindMapStore/MindMapStoreContext';
 import {MOD} from '@/components/molecules/MindMapKeyboardEvents/shortcuts';
+import {ClassEditor} from '@/components/molecules/ClassEditor';
 
 const ReactQuill = dynamic(() => import('react-quill-new'), {
   ssr: false,
@@ -93,6 +94,9 @@ export function EditorModal() {
     }
     close();
   };
+
+  // Class nodes get a structured editor instead of the rich-text one.
+  if (node?.umlClass) return <ClassEditor node={node} onClose={close} />;
 
   return (
     <Dialog

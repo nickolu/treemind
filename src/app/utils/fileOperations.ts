@@ -1,4 +1,10 @@
-import {MindNode, normalizeTree, serializeTree} from '@/domain/MindMap/tree';
+import {MindNode} from '@/domain/MindMap/tree';
+import {
+  MindMapDocument,
+  createDocument,
+  normalizeDocument,
+  serializeDocument,
+} from '@/domain/MindMap/document';
 import {htmlToText} from '@/domain/MindMap/html';
 import {parseFreeMind, toFreeMind} from '@/domain/MindMap/formats/freemind';
 import {parseXMind} from '@/domain/MindMap/formats/xmind';
@@ -7,17 +13,18 @@ export type ExportFormat = 'json' | 'freemind';
 
 const EXPORTERS: Record<
   ExportFormat,
-  {extension: string; type: string; write: (root: MindNode) => string}
+  {extension: string; type: string; write: (doc: MindMapDocument) => string}
 > = {
   json: {
     extension: 'json',
     type: 'application/json',
-    write: (root) => JSON.stringify(serializeTree(root), null, 2),
+    write: (doc) => JSON.stringify(serializeDocument(doc), null, 2),
   },
+  // FreeMind has no equivalent for links or class members, so only the tree.
   freemind: {
     extension: 'mm',
     type: 'application/x-freemind',
-    write: toFreeMind,
+    write: (doc) => toFreeMind(doc.root),
   },
 };
 
@@ -31,15 +38,15 @@ function fileNameFor(root: MindNode, extension: string) {
 }
 
 export function saveMindMapToFile(
-  root: MindNode,
+  doc: MindMapDocument,
   format: ExportFormat = 'json',
 ) {
   const exporter = EXPORTERS[format];
-  const blob = new Blob([exporter.write(root)], {type: exporter.type});
+  const blob = new Blob([exporter.write(doc)], {type: exporter.type});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = fileNameFor(root, exporter.extension);
+  a.download = fileNameFor(doc.root, exporter.extension);
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -47,20 +54,22 @@ export function saveMindMapToFile(
 }
 
 /** Parses a TreeMind (.json), FreeMind (.mm) or XMind (.xmind) file. */
-export async function parseMindMapFile(file: File): Promise<MindNode> {
+export async function parseMindMapFile(file: File): Promise<MindMapDocument> {
   const extension = file.name.split('.').pop()?.toLowerCase();
-  if (extension === 'mm') return parseFreeMind(await file.text());
-  if (extension === 'xmind' || extension === 'zip') {
-    return parseXMind(new Uint8Array(await file.arrayBuffer()));
+  if (extension === 'mm') {
+    return createDocument(parseFreeMind(await file.text()));
   }
-  return normalizeTree(JSON.parse(await file.text()));
+  if (extension === 'xmind' || extension === 'zip') {
+    return createDocument(parseXMind(new Uint8Array(await file.arrayBuffer())));
+  }
+  return normalizeDocument(JSON.parse(await file.text()));
 }
 
 /**
- * Opens a file picker and resolves with the parsed tree, or null if the user
+ * Opens a file picker and resolves with the parsed map, or null if the user
  * cancelled. Rejects if the file isn't a valid mind map.
  */
-export function loadMindMapFromFile(): Promise<MindNode | null> {
+export function loadMindMapFromFile(): Promise<MindMapDocument | null> {
   return new Promise((resolve, reject) => {
     const input = document.createElement('input');
     input.type = 'file';

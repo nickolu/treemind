@@ -1,4 +1,5 @@
 import {v4 as uuidv4} from 'uuid';
+import {NodeShape, isNodeShape} from './shapes';
 
 /**
  * A mind map is a plain, immutable tree. Every operation below returns a new
@@ -11,7 +12,34 @@ export interface MindNode {
   html: string;
   children: MindNode[];
   collapsed?: boolean;
+  /** Present when the node is drawn as a class box (name = the node's text). */
+  umlClass?: UmlClass;
+  /** For AI-generated nodes: whether they came from the user's context. */
+  origin?: NodeOrigin;
+  /** How the node is drawn; ignored for class nodes. */
+  shape?: NodeShape;
+  /**
+   * Only on children of the root: the node stands on its own rather than
+   * being part of the central topic (drawn unconnected).
+   */
+  floating?: boolean;
+  /** Where the node was placed in the freeform layout. */
+  position?: Point;
 }
+
+export interface Point {
+  x: number;
+  y: number;
+}
+
+export interface UmlClass {
+  /** Free text such as "entity" or "interface"; rendered as «stereotype». */
+  stereotype: string;
+  attributes: string[];
+  operations: string[];
+}
+
+export type NodeOrigin = 'context' | 'inferred';
 
 /** Shape of a node in saved files / localStorage (backwards compatible). */
 export type MindNodeJson = {
@@ -20,7 +48,31 @@ export type MindNodeJson = {
   html?: string;
   children?: MindNodeJson[];
   collapsed?: boolean;
+  umlClass?: Partial<UmlClass>;
+  origin?: NodeOrigin;
+  shape?: NodeShape;
+  floating?: boolean;
+  position?: Point;
 };
+
+export function createUmlClass(stereotype = ''): UmlClass {
+  return {stereotype, attributes: [], operations: []};
+}
+
+const stringList = (value: unknown): string[] =>
+  Array.isArray(value)
+    ? value.filter((v): v is string => typeof v === 'string')
+    : [];
+
+function normalizeUmlClass(value: unknown): UmlClass | undefined {
+  if (!value || typeof value !== 'object') return undefined;
+  const uml = value as Partial<UmlClass>;
+  return {
+    stereotype: typeof uml.stereotype === 'string' ? uml.stereotype : '',
+    attributes: stringList(uml.attributes),
+    operations: stringList(uml.operations),
+  };
+}
 
 export function createNode(
   parentId: string | null,
@@ -41,6 +93,13 @@ export function findNode(root: MindNode, id: string): MindNode | undefined {
     if (found) return found;
   }
   return undefined;
+}
+
+/** Every node id in the tree. */
+export function collectIds(node: MindNode, ids = new Set<string>()) {
+  ids.add(node.id);
+  node.children.forEach((child) => collectIds(child, ids));
+  return ids;
 }
 
 export function getParent(root: MindNode, node: MindNode) {
@@ -85,7 +144,12 @@ export function insertChildren(
     children.splice(
       at,
       0,
-      ...nodes.map((node) => ({...node, parentId: parent.id})),
+      ...nodes.map((node) => {
+        const next = {...node, parentId: parent.id};
+        // Only the root's children can float.
+        if (parent.parentId !== null) delete next.floating;
+        return next;
+      }),
     );
     return {...parent, children, collapsed: false};
   });
@@ -171,6 +235,7 @@ const LEGACY_LOADING_MARKER = 'loading-dots';
 export function normalizeTree(
   json: unknown,
   parentId: string | null = null,
+  depth = 0,
 ): MindNode {
   if (!json || typeof json !== 'object') {
     throw new Error('Invalid mind map: expected an object');
@@ -190,9 +255,23 @@ export function normalizeTree(
             child.html.includes(LEGACY_LOADING_MARKER)
           ),
       )
-      .map((child) => normalizeTree(child, id)),
+      .map((child) => normalizeTree(child, id, depth + 1)),
   };
   if (value.collapsed && node.children.length > 0) node.collapsed = true;
+  const umlClass = normalizeUmlClass(value.umlClass);
+  if (umlClass) node.umlClass = umlClass;
+  if (value.origin === 'context' || value.origin === 'inferred') {
+    node.origin = value.origin;
+  }
+  if (isNodeShape(value.shape)) node.shape = value.shape;
+  // Only the root's children can float.
+  if (value.floating && depth === 1) {
+    node.floating = true;
+  }
+  const position = value.position;
+  if (position && Number.isFinite(position.x) && Number.isFinite(position.y)) {
+    node.position = {x: position.x, y: position.y};
+  }
   return node;
 }
 
@@ -202,6 +281,11 @@ export function serializeTree(node: MindNode): MindNodeJson {
     parentId: node.parentId,
     html: node.html,
     ...(node.collapsed ? {collapsed: true} : {}),
+    ...(node.umlClass ? {umlClass: node.umlClass} : {}),
+    ...(node.origin ? {origin: node.origin} : {}),
+    ...(node.shape ? {shape: node.shape} : {}),
+    ...(node.floating ? {floating: true} : {}),
+    ...(node.position ? {position: node.position} : {}),
     children: node.children.map(serializeTree),
   };
 }

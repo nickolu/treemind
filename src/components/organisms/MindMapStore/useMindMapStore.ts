@@ -14,7 +14,24 @@ import {
   setAllCollapsed,
   setCollapsed,
   updateNode,
+  UmlClass,
+  createUmlClass,
+  Point,
 } from '@/domain/MindMap/tree';
+import {NodeShape} from '@/domain/MindMap/shapes';
+import {
+  LinkKind,
+  MindLink,
+  createLink,
+  hasLink,
+  pruneLinks,
+} from '@/domain/MindMap/links';
+import {
+  LayoutKind,
+  MindMapDocument,
+  createDocument,
+} from '@/domain/MindMap/document';
+import {Generation, applyGeneration} from '@/domain/MindMap/generation';
 import {
   loadMindMapFromLocalStorage,
   saveMindMapToLocalStorage,
@@ -22,15 +39,28 @@ import {
 
 const HISTORY_LIMIT = 100;
 
+/** What undo/redo restores: the tree and the links between its nodes. */
+interface Snapshot {
+  root: MindNode;
+  links: MindLink[];
+}
+
 /**
- * Single source of truth for the mind map: the tree (with undo history) plus
- * the UI state that depends on it. React Flow nodes are *derived* from this,
- * never stored separately, so the two can't drift apart.
+ * Single source of truth for the mind map: the tree and links (with undo
+ * history) plus the UI state that depends on them. React Flow nodes are
+ * *derived* from this, never stored separately, so the two can't drift apart.
  */
 interface StoreState {
-  past: MindNode[];
+  past: Snapshot[];
   root: MindNode;
-  future: MindNode[];
+  links: MindLink[];
+  future: Snapshot[];
+  /** Source text for AI generation. Saved with the map, but not undoable. */
+  context: string;
+  /** How the map is arranged. Saved with the map, but not undoable. */
+  layout: LayoutKind;
+  /** Node a link is being drawn from (link mode), if any. */
+  linkingFrom: string | null;
   selectedId: string;
   /** Node being edited inline; `initialText` replaces its text when set. */
   editing: {id: string; initialText?: string} | null;
@@ -39,16 +69,20 @@ interface StoreState {
   generatingIds: string[];
 }
 
-/** Result of a tree edit: the new root plus optional selection changes. */
+/** Result of an edit: the new root (and links) plus optional selection changes. */
 interface Commit {
   root: MindNode;
+  links?: MindLink[];
   selectedId?: string;
   editId?: string;
 }
 
 type Action =
   | {type: 'APPLY'; fn: (state: StoreState) => Commit | null}
-  | {type: 'REPLACE'; root: MindNode}
+  | {type: 'REPLACE'; doc: MindMapDocument}
+  | {type: 'SET_CONTEXT'; context: string}
+  | {type: 'SET_LAYOUT'; layout: LayoutKind}
+  | {type: 'SET_LINKING'; id: string | null}
   | {type: 'UNDO'}
   | {type: 'REDO'}
   | {type: 'SELECT'; id: string}
@@ -66,6 +100,7 @@ function reconcile(state: StoreState): StoreState {
     selectedId: exists(state.selectedId) ? state.selectedId : state.root.id,
     editing: exists(state.editing?.id) ? state.editing : null,
     richEditorId: exists(state.richEditorId) ? state.richEditorId : null,
+    linkingFrom: exists(state.linkingFrom) ? state.linkingFrom : null,
   };
 }
 
@@ -74,28 +109,34 @@ function reducer(state: StoreState, action: Action): StoreState {
     case 'APPLY': {
       const commit = action.fn(state);
       if (!commit) return state;
-      const changed = commit.root !== state.root;
+      // Links to deleted nodes go with them.
+      const links = pruneLinks(commit.links ?? state.links, commit.root);
+      const changed = commit.root !== state.root || links !== state.links;
       if (!changed && !commit.selectedId) return state;
       return reconcile({
         ...state,
         past: changed
-          ? [...state.past, state.root].slice(-HISTORY_LIMIT)
+          ? [...state.past, snapshot(state)].slice(-HISTORY_LIMIT)
           : state.past,
         root: commit.root,
+        links,
         future: changed ? [] : state.future,
         selectedId: commit.selectedId ?? state.selectedId,
         editing: commit.editId ? {id: commit.editId} : state.editing,
       });
     }
     case 'REPLACE':
+      return fromDocument(action.doc);
+    case 'SET_CONTEXT':
+      return {...state, context: action.context};
+    case 'SET_LAYOUT':
+      return {...state, layout: action.layout};
+    case 'SET_LINKING':
+      if (action.id && !findNode(state.root, action.id)) return state;
       return {
-        past: [],
-        root: action.root,
-        future: [],
-        selectedId: action.root.id,
-        editing: null,
-        richEditorId: null,
-        generatingIds: [],
+        ...state,
+        linkingFrom: action.id,
+        editing: action.id ? null : state.editing,
       };
     case 'UNDO': {
       const previous = state.past[state.past.length - 1];
@@ -103,8 +144,8 @@ function reducer(state: StoreState, action: Action): StoreState {
       return reconcile({
         ...state,
         past: state.past.slice(0, -1),
-        root: previous,
-        future: [state.root, ...state.future],
+        ...previous,
+        future: [snapshot(state), ...state.future],
         editing: null,
       });
     }
@@ -113,8 +154,8 @@ function reducer(state: StoreState, action: Action): StoreState {
       if (!next) return state;
       return reconcile({
         ...state,
-        past: [...state.past, state.root],
-        root: next,
+        past: [...state.past, snapshot(state)],
+        ...next,
         future,
         editing: null,
       });
@@ -145,17 +186,41 @@ function reducer(state: StoreState, action: Action): StoreState {
   }
 }
 
-function init(): StoreState {
-  const root = loadMindMapFromLocalStorage() ?? createRoot();
+const snapshot = ({root, links}: StoreState): Snapshot => ({root, links});
+
+function fromDocument(doc: MindMapDocument): StoreState {
   return {
     past: [],
-    root,
+    root: doc.root,
+    links: doc.links,
     future: [],
-    selectedId: root.id,
+    context: doc.context,
+    layout: doc.layout,
+    linkingFrom: null,
+    selectedId: doc.root.id,
     editing: null,
     richEditorId: null,
     generatingIds: [],
   };
+}
+
+function init(): StoreState {
+  return fromDocument(
+    loadMindMapFromLocalStorage() ?? createDocument(createRoot()),
+  );
+}
+
+/** Sets freeform positions, keeping untouched nodes (and the root) as is. */
+function withPositions(root: MindNode, positions?: Map<string, Point>) {
+  let next = root;
+  positions?.forEach((position, id) => {
+    next = updateNode(next, id, (node) =>
+      node.position?.x === position.x && node.position?.y === position.y
+        ? node
+        : {...node, position},
+    );
+  });
+  return next;
 }
 
 /** Returns the node and its parent, or null for the root / missing nodes. */
@@ -169,13 +234,16 @@ function withParent(root: MindNode, id: string) {
 
 export function useMindMapStore() {
   const [state, dispatch] = useReducer(reducer, undefined, init);
-  const {root} = state;
+  const {root, links, context, layout} = state;
 
-  // Persist (debounced) whenever the tree changes.
+  // Persist (debounced) whenever the map changes.
   useEffect(() => {
-    const timeout = setTimeout(() => saveMindMapToLocalStorage(root), 300);
+    const timeout = setTimeout(
+      () => saveMindMapToLocalStorage({root, links, context, layout}),
+      300,
+    );
     return () => clearTimeout(timeout);
-  }, [root]);
+  }, [root, links, context, layout]);
 
   // Every action is expressed against the *current* reducer state, so these
   // callbacks are stable and never act on a stale tree.
@@ -209,7 +277,18 @@ export function useMindMapStore() {
               editId: node.id,
             };
           }
-          const sibling = createNode(found.parent.id);
+          // A sibling looks like its neighbour: Enter on a class adds a class,
+          // on a floating node another floating node.
+          const {node} = found;
+          const sibling: MindNode = {
+            ...createNode(found.parent.id),
+            ...(node.umlClass ? {umlClass: createUmlClass()} : {}),
+            ...(node.shape ? {shape: node.shape} : {}),
+            ...(node.floating ? {floating: true} : {}),
+            ...(node.position
+              ? {position: {x: node.position.x, y: node.position.y + 80}}
+              : {}),
+          };
           return {
             root: insertChildren(
               root,
@@ -247,11 +326,110 @@ export function useMindMapStore() {
           return {root: removeNode(root, id), selectedId: nextSelection.id};
         }),
 
-      move: (id: string, parentId: string, index?: number) =>
-        apply(({root}) => ({
-          root: moveNode(root, id, parentId, index),
-          selectedId: id,
-        })),
+      /**
+       * Moves a node under a new parent. `floating` (only meaningful for the
+       * root's children) says whether it then stands on its own. `positions`
+       * are freeform positions stored in the same undo step.
+       */
+      move: (
+        id: string,
+        parentId: string,
+        index?: number,
+        floating = false,
+        positions?: Map<string, Point>,
+      ) =>
+        apply(({root}) => {
+          const moved = moveNode(root, id, parentId, index);
+          if (moved === root) return null; // invalid move
+          return {
+            root: updateNode(withPositions(moved, positions), id, (node) => {
+              const next = {...node};
+              if (floating && parentId === root.id) next.floating = true;
+              else delete next.floating;
+              return next;
+            }),
+            selectedId: id,
+          };
+        }),
+
+      /**
+       * Adds a node at a spot on the canvas: inside `parentId` (a container),
+       * or unconnected when that's null. `position` is its freeform position;
+       * `positions` are other freeform positions stored in the same step.
+       */
+      addNodeAt: (
+        parentId: string | null,
+        position?: Point,
+        positions?: Map<string, Point>,
+      ) =>
+        apply(({root}) => {
+          const parent = parentId ?? root.id;
+          if (!findNode(root, parent)) return null;
+          const node: MindNode = {
+            ...createNode(parent),
+            ...(parentId === null ? {floating: true} : {}),
+            ...(position ? {position} : {}),
+          };
+          return {
+            root: insertChildren(withPositions(root, positions), parent, [
+              node,
+            ]),
+            selectedId: node.id,
+            editId: node.id,
+          };
+        }),
+
+      /** Detaches a node (and its branch) from its parent so it floats. */
+      detach: (id: string) =>
+        apply(({root}) => {
+          const node = findNode(root, id);
+          if (!node?.parentId || node.floating) return null;
+          const moved = moveNode(root, id, root.id);
+          return {
+            root: updateNode(moved, id, (n) => ({...n, floating: true})),
+            selectedId: id,
+          };
+        }),
+
+      /** Stores freeform positions, as one undoable step. */
+      setPositions: (positions: Map<string, Point>) =>
+        apply(({root}) => ({root: withPositions(root, positions)})),
+
+      /** Forgets all freeform positions, so the map is arranged automatically. */
+      clearPositions: () =>
+        apply(({root}) => {
+          const walk = (node: MindNode): MindNode => {
+            const children = node.children.map(walk);
+            const changed =
+              !!node.position ||
+              children.some((c, i) => c !== node.children[i]);
+            if (!changed) return node;
+            const next = {...node, children};
+            delete next.position;
+            return next;
+          };
+          return {root: walk(root)};
+        }),
+
+      /** Draws the node as `shape`, as a class, or (null) as a plain topic. */
+      setShape: (id: string, shape: NodeShape | 'class' | null) =>
+        apply(({root}) => {
+          const node = findNode(root, id);
+          if (!node) return null;
+          return {
+            root: updateNode(root, id, (n) => {
+              const next = {...n};
+              delete next.shape;
+              if (shape === 'class') {
+                next.umlClass = n.umlClass ?? createUmlClass();
+              } else {
+                delete next.umlClass;
+                if (shape) next.shape = shape;
+              }
+              return next;
+            }),
+          };
+        }),
 
       /** Moves a node up (-1) or down (+1) among its siblings. */
       reorder: (id: string, delta: -1 | 1) =>
@@ -285,7 +463,69 @@ export function useMindMapStore() {
             : {root: revealNode(next, selectedId)};
         }),
 
-      replace: (next: MindNode) => dispatch({type: 'REPLACE', root: next}),
+      /**
+       * Turns a node into a class box or updates its members (and optionally
+       * its name) in one step; `null` turns it back into a plain topic.
+       */
+      setUmlClass: (id: string, umlClass: UmlClass | null, html?: string) =>
+        apply(({root}) => {
+          if (!findNode(root, id)) return null;
+          return {
+            root: updateNode(root, id, (node) => {
+              const next = {...node, html: html ?? node.html};
+              if (umlClass) next.umlClass = umlClass;
+              else delete next.umlClass;
+              return next;
+            }),
+          };
+        }),
+
+      /** Expands collapsed branches so all of these nodes are visible. */
+      reveal: (ids: string[]) =>
+        apply(({root}) => ({
+          root: ids.reduce((tree, id) => revealNode(tree, id), root),
+        })),
+
+      addLink: (from: string, to: string, kind: LinkKind = 'relation') =>
+        apply(({root, links}) => {
+          if (from === to || !findNode(root, from) || !findNode(root, to)) {
+            return null;
+          }
+          if (hasLink(links, from, to, kind)) return null;
+          return {root, links: [...links, createLink(from, to, kind)]};
+        }),
+
+      updateLink: (id: string, patch: Partial<Omit<MindLink, 'id'>>) =>
+        apply(({root, links}) => {
+          const link = links.find((l) => l.id === id);
+          if (!link) return null;
+          const next = {...link, ...patch};
+          if (
+            (Object.keys(patch) as (keyof typeof patch)[]).every(
+              (key) => link[key] === next[key],
+            )
+          ) {
+            return null;
+          }
+          return {root, links: links.map((l) => (l.id === id ? next : l))};
+        }),
+
+      removeLink: (id: string) =>
+        apply(({root, links}) =>
+          links.some((l) => l.id === id)
+            ? {root, links: links.filter((l) => l.id !== id)}
+            : null,
+        ),
+
+      /** Applies AI output as a single undoable step. */
+      applyGeneration: (generation: Generation) =>
+        apply(({root, links}) => applyGeneration(root, links, generation)),
+
+      setContext: (context: string) => dispatch({type: 'SET_CONTEXT', context}),
+      setLayout: (layout: LayoutKind) => dispatch({type: 'SET_LAYOUT', layout}),
+      startLinking: (id: string) => dispatch({type: 'SET_LINKING', id}),
+      stopLinking: () => dispatch({type: 'SET_LINKING', id: null}),
+      replace: (doc: MindMapDocument) => dispatch({type: 'REPLACE', doc}),
       undo: () => dispatch({type: 'UNDO'}),
       redo: () => dispatch({type: 'REDO'}),
       select: (id: string) => dispatch({type: 'SELECT', id}),
@@ -302,6 +542,10 @@ export function useMindMapStore() {
   return {
     state: {
       root,
+      links,
+      context,
+      layout,
+      linkingFrom: state.linkingFrom,
       selectedId: state.selectedId,
       editing: state.editing,
       richEditorId: state.richEditorId,
