@@ -18,6 +18,9 @@ import {MindMapCanvas} from '@/components/organisms/MindMapCanvas';
 import {AppToolbar} from '@/components/molecules/AppToolbar';
 import {EditorModal} from '@/components/molecules/EditorModal';
 import {useGenerateIdeas} from '@/components/molecules/AiGeneratedNodes/useGenerateIdeas';
+import {useAiSettings} from '@/components/molecules/AiDiagram/useAiSettings';
+import {useExpandDiagram} from '@/components/molecules/AiDiagram/useExpandDiagram';
+import {ModelPanel} from '@/components/organisms/ModelPanel';
 import {useMindMapKeyboardShortcuts} from '@/components/molecules/MindMapKeyboardEvents/useMindMapKeyboardShortcuts';
 
 const theme = createTheme({
@@ -50,10 +53,26 @@ function HomePage() {
     [],
   );
 
-  const generateIdeas = useGenerateIdeas(stateRef, storeActions, notify);
+  const {settings: aiSettings, update: updateAiSettings} = useAiSettings();
+  const aiSettingsRef = useRef(aiSettings);
+  aiSettingsRef.current = aiSettings;
+  const [panelOpen, setPanelOpen] = useState(false);
+
+  const generateIdeas = useGenerateIdeas(
+    stateRef,
+    aiSettingsRef,
+    storeActions,
+    notify,
+  );
+  const {expandNode, expandAll} = useExpandDiagram(
+    stateRef,
+    aiSettingsRef,
+    storeActions,
+    notify,
+  );
   const actions = useMemo<AppActions>(
-    () => ({...storeActions, generateIdeas, notify}),
-    [storeActions, generateIdeas, notify],
+    () => ({...storeActions, generateIdeas, expandNode, expandAll, notify}),
+    [storeActions, generateIdeas, expandNode, expandAll, notify],
   );
 
   useMindMapKeyboardShortcuts(state, actions);
@@ -65,8 +84,20 @@ function HomePage() {
         <MindMapActionsContext.Provider value={actions}>
           <ReactFlowProvider>
             <div className="mm-app">
-              <AppToolbar />
-              <MindMapCanvas />
+              <AppToolbar
+                panelOpen={panelOpen}
+                onTogglePanel={() => setPanelOpen((open) => !open)}
+              />
+              <div className="mm-body">
+                <MindMapCanvas />
+                {panelOpen && (
+                  <ModelPanel
+                    settings={aiSettings}
+                    onSettingsChange={updateAiSettings}
+                    onClose={() => setPanelOpen(false)}
+                  />
+                )}
+              </div>
             </div>
             <EditorModal />
           </ReactFlowProvider>

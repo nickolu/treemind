@@ -1,4 +1,5 @@
 import OpenAI from 'openai';
+import {NO_REASONING, SAFETY_AI_MODEL} from '@/app/utils/aiModels';
 
 const systemPrompt = `Is the following user input safe to use?
 
@@ -37,7 +38,8 @@ async function ensureSafeUserInput(
   // Created per call so a missing key fails the request, not the module import.
   const openai = new OpenAI({apiKey: process.env.OPENAI_API_KEY});
   const response = await openai.chat.completions.create({
-    model: 'gpt-4o',
+    model: SAFETY_AI_MODEL,
+    ...NO_REASONING,
     messages: [
       {
         role: 'system',
