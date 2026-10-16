@@ -57,6 +57,13 @@ function HomePage() {
   const aiSettingsRef = useRef(aiSettings);
   aiSettingsRef.current = aiSettings;
   const [panelOpen, setPanelOpen] = useState(false);
+  // A one-shot request, cleared once the panel has taken focus, so later
+  // re-renders (or a new map) can't steal focus from the canvas.
+  const [focusContext, setFocusContext] = useState(false);
+  const openAiPanel = useCallback(() => {
+    setPanelOpen(true);
+    setFocusContext(true);
+  }, []);
 
   const generateIdeas = useGenerateIdeas(
     stateRef,
@@ -71,8 +78,15 @@ function HomePage() {
     notify,
   );
   const actions = useMemo<AppActions>(
-    () => ({...storeActions, generateIdeas, expandNode, expandAll, notify}),
-    [storeActions, generateIdeas, expandNode, expandAll, notify],
+    () => ({
+      ...storeActions,
+      generateIdeas,
+      expandNode,
+      expandAll,
+      notify,
+      openAiPanel,
+    }),
+    [storeActions, generateIdeas, expandNode, expandAll, notify, openAiPanel],
   );
 
   useMindMapKeyboardShortcuts(state, actions);
@@ -95,6 +109,8 @@ function HomePage() {
                     settings={aiSettings}
                     onSettingsChange={updateAiSettings}
                     onClose={() => setPanelOpen(false)}
+                    focusContext={focusContext}
+                    onContextFocused={() => setFocusContext(false)}
                   />
                 )}
               </div>

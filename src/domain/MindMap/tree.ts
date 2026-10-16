@@ -82,7 +82,11 @@ export function createNode(
   return {id, parentId, html, children: []};
 }
 
-export function createRoot(html = '<div>Central idea</div>'): MindNode {
+/**
+ * A new map's root has no text: the node renders a prompt placeholder
+ * instead, so typing a topic replaces nothing and no filler ever gets saved.
+ */
+export function createRoot(html = ''): MindNode {
   return createNode(null, html);
 }
 

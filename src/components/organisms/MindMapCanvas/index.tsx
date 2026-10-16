@@ -41,6 +41,7 @@ import {useAnimatedPositions} from './useAnimatedPositions';
 import {LinkEdge, LinkEdgeData, LinkMarkers} from './LinkEdge';
 import {TreeEdge} from './TreeEdge';
 import {LinkMenu, LinkMenuTarget} from './LinkMenu';
+import {StartHint} from './StartHint';
 import {Z_NODE, linkEdges, treeEdges} from './edges';
 
 const nodeTypes = {mindMapNode: MindMapNode};
@@ -90,6 +91,7 @@ export function MindMapCanvas() {
     selectedId,
     editing,
     generatingIds,
+    flashIds,
     linkingFrom,
   } = useMindMapState();
   const actions = useMindMapActions();
@@ -109,6 +111,7 @@ export function MindMapCanvas() {
 
   const nodes = useMemo<Node<MindMapNodeData>[]>(() => {
     const generating = new Set(generatingIds);
+    const flashed = new Set(flashIds);
     const nextCache = new Map<string, MindMapNodeData>();
     const result = layout.nodes.flatMap((layoutNode) => {
       // An async layout can briefly lag behind the tree.
@@ -126,6 +129,7 @@ export function MindMapCanvas() {
         editInitialText:
           editing?.id === treeNode.id ? editing.initialText : undefined,
         isGenerating: generating.has(treeNode.id),
+        isNew: flashed.has(treeNode.id),
         isDropTarget: drag?.dropTargetId === treeNode.id,
         umlClass: treeNode.umlClass,
         origin: treeNode.origin,
@@ -188,6 +192,7 @@ export function MindMapCanvas() {
     selectedId,
     editing,
     generatingIds,
+    flashIds,
     linkingFrom,
     freeform,
   ]);
@@ -622,6 +627,7 @@ export function MindMapCanvas() {
           Click a node to link it from “{linkSourceName}” · Esc to cancel
         </div>
       )}
+      <StartHint />
       <LinkMenu target={linkMenu} onClose={() => setLinkMenu(null)} />
     </div>
   );

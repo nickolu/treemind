@@ -10,6 +10,8 @@ export type AppActions = MindMapActions & {
   /** Adds one level of AI detail across the whole map. */
   expandAll: () => void;
   notify: (message: string, severity?: 'success' | 'error' | 'info') => void;
+  /** Opens the AI modeling panel with the context box focused. */
+  openAiPanel: () => void;
 };
 
 export const MindMapStateContext = createContext<MindMapState | null>(null);
