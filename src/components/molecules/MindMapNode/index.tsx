@@ -36,6 +36,8 @@ export interface MindMapNodeData {
   isEditing: boolean;
   editInitialText?: string;
   isGenerating: boolean;
+  /** Just added by the AI; highlighted briefly. */
+  isNew: boolean;
   isDropTarget: boolean;
   umlClass?: UmlClass;
   origin?: NodeOrigin;
@@ -103,6 +105,10 @@ function MindMapNodeView({
   const actions = useMindMapActions();
   const [shapeAnchor, setShapeAnchor] = useState<HTMLElement | null>(null);
   const hasChildren = data.childCount > 0;
+  // A leaf with a name is exactly where brainstorming makes sense — and it's
+  // the one node that has no collapse button, so the slot is free.
+  const canSprout =
+    !hasChildren && !!data.html && !data.isEditing && !data.isGenerating;
   const uml = data.umlClass;
   // Classes and containers have their own look; otherwise the shape applies.
   const shape = !uml && !data.container ? data.shape : undefined;
@@ -120,6 +126,7 @@ function MindMapNodeView({
     data.origin === 'inferred' && 'mm-node--inferred',
     selected && 'mm-node--selected',
     data.isGenerating && 'mm-node--generating',
+    data.isNew && 'mm-node--new',
     data.isDropTarget && 'mm-node--drop-target',
     dragging && 'mm-node--dragging',
   ]
@@ -135,7 +142,11 @@ function MindMapNodeView({
   ) : data.html ? (
     <NodeHtmlRenderer html={data.html} />
   ) : (
-    <span className="mm-node__placeholder">Untitled</span>
+    // A new map starts on an unnamed root, so its placeholder asks for the
+    // one thing the user has to supply before anything else can help.
+    <span className="mm-node__placeholder">
+      {data.isRoot ? 'What do you want to diagram?' : 'Untitled'}
+    </span>
   );
 
   return (
@@ -217,6 +228,31 @@ function MindMapNodeView({
         >
           {data.collapsed ? data.childCount : '–'}
         </button>
+      )}
+
+      {/* Generating ideas is the least guessable thing the app does, so it
+          gets an affordance on the node itself and not only in the toolbar
+          above it, which stays hidden while the node is being typed into. */}
+      {canSprout && (
+        <Tooltip
+          title={`Generate ideas with AI (${shortcutLabel('generate')})`}
+          placement="right"
+          disableInteractive
+        >
+          <button
+            type="button"
+            tabIndex={-1}
+            className="mm-sprout nodrag"
+            aria-label="Generate ideas with AI"
+            onMouseDown={keepFocus}
+            onClick={(event) => {
+              event.stopPropagation();
+              actions.generateIdeas(id);
+            }}
+          >
+            <AutoAwesomeIcon sx={{fontSize: 12}} />
+          </button>
+        </Tooltip>
       )}
 
       <NodeToolbar

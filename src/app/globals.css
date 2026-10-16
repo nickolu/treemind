@@ -163,6 +163,33 @@ a {
   }
 }
 
+/* A fading ring on nodes the AI just added, so a generation reads as an
+   event and it's clear which nodes came from it. */
+.mm-node--new::before {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 12px;
+  border: 2px solid var(--branch);
+  animation: mm-flash 2.6s ease-out forwards;
+  pointer-events: none;
+}
+
+@keyframes mm-flash {
+  0% {
+    opacity: 1;
+    transform: scale(1.06);
+  }
+  12% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1);
+  }
+}
+
 .mm-node__placeholder {
   color: var(--muted);
   font-style: italic;
@@ -242,6 +269,39 @@ a {
   color: #fff;
 }
 
+/* Fills the slot the collapse button leaves free on a leaf node. Filled
+   rather than outlined like the neutral collapse chip, because on a leaf
+   this is the action worth noticing. */
+.mm-sprout {
+  position: absolute;
+  top: 50%;
+  right: -11px;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 1.5px solid #fff;
+  border-radius: 10px;
+  background: var(--branch);
+  color: #fff;
+  cursor: pointer;
+  opacity: 0;
+  transition:
+    opacity 120ms ease,
+    transform 120ms ease;
+}
+
+.mm-node:hover .mm-sprout,
+.mm-node--selected .mm-sprout {
+  opacity: 1;
+}
+
+.mm-sprout:hover {
+  transform: translateY(-50%) scale(1.15);
+}
+
 .mm-toolbar {
   display: flex;
   gap: 2px;
@@ -268,10 +328,12 @@ a {
 
 @media (prefers-reduced-motion: reduce) {
   .mm-node,
-  .mm-collapse {
+  .mm-collapse,
+  .mm-sprout {
     transition: none;
   }
-  .mm-node--generating::after {
+  .mm-node--generating::after,
+  .mm-node--new::before {
     animation: none;
   }
 }
@@ -305,6 +367,10 @@ a {
 }
 
 @media (max-width: 720px) {
+  /* The buttons carry the message once there's no room for the sentence. */
+  .mm-start-hint__text {
+    display: none;
+  }
   .mm-panel {
     position: absolute;
     inset: 52px 0 0 auto;
@@ -474,6 +540,29 @@ a {
   font-size: 13px;
   box-shadow: 0 4px 12px rgba(15, 23, 42, 0.18);
   pointer-events: none;
+}
+
+/* First-run guidance, sat between the zoom controls and the minimap. */
+.mm-start-hint {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 11;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: calc(100% - 32px);
+  padding: 6px 6px 6px 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 6px 20px rgba(15, 23, 42, 0.14);
+}
+
+.mm-start-hint__text {
+  font-size: 13px;
+  color: var(--muted);
 }
 
 /* ---------- Containers (diagram layouts) ---------- */

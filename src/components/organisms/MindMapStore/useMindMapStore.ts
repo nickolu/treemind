@@ -67,6 +67,11 @@ interface StoreState {
   /** Node open in the rich-text editor modal. */
   richEditorId: string | null;
   generatingIds: string[];
+  /**
+   * Nodes the AI just added, highlighted briefly so it's obvious what a
+   * generation did. Not undoable and never saved.
+   */
+  flashIds: string[];
 }
 
 /** Result of an edit: the new root (and links) plus optional selection changes. */
@@ -89,7 +94,8 @@ type Action =
   | {type: 'START_EDIT'; id: string; initialText?: string}
   | {type: 'STOP_EDIT'}
   | {type: 'OPEN_RICH_EDITOR'; id: string | null}
-  | {type: 'SET_GENERATING'; id: string; generating: boolean};
+  | {type: 'SET_GENERATING'; id: string; generating: boolean}
+  | {type: 'SET_FLASH'; ids: string[]};
 
 /** Keeps selection/editing pointing at nodes that still exist. */
 function reconcile(state: StoreState): StoreState {
@@ -183,6 +189,9 @@ function reducer(state: StoreState, action: Action): StoreState {
         generatingIds: action.generating ? [...without, action.id] : without,
       };
     }
+    case 'SET_FLASH':
+      if (state.flashIds.length === 0 && action.ids.length === 0) return state;
+      return {...state, flashIds: action.ids};
   }
 }
 
@@ -201,6 +210,7 @@ function fromDocument(doc: MindMapDocument): StoreState {
     editing: null,
     richEditorId: null,
     generatingIds: [],
+    flashIds: [],
   };
 }
 
@@ -301,12 +311,18 @@ export function useMindMapStore() {
           };
         }),
 
-      addChildren: (parentId: string, htmls: string[]) =>
-        apply(({root}) => {
-          if (!findNode(root, parentId) || htmls.length === 0) return null;
-          const nodes = htmls.map((html) => createNode(parentId, html));
-          return {root: insertChildren(root, parentId, nodes)};
-        }),
+      /** Returns the new ids, so callers can highlight what they added. */
+      addChildren: (parentId: string, htmls: string[]) => {
+        // Minted out here so the caller learns the ids (and so a replayed
+        // reducer can't mint a second set).
+        const nodes = htmls.map((html) => createNode(parentId, html));
+        apply(({root}) =>
+          nodes.length > 0 && findNode(root, parentId)
+            ? {root: insertChildren(root, parentId, nodes)}
+            : null,
+        );
+        return nodes.map((node) => node.id);
+      },
 
       setHtml: (id: string, html: string) =>
         apply(({root}) => {
@@ -536,6 +552,8 @@ export function useMindMapStore() {
         dispatch({type: 'OPEN_RICH_EDITOR', id}),
       setGenerating: (id: string, generating: boolean) =>
         dispatch({type: 'SET_GENERATING', id, generating}),
+      /** Highlights nodes until called again with another set (or none). */
+      flashNodes: (ids: string[]) => dispatch({type: 'SET_FLASH', ids}),
     };
   }, []);
 
@@ -550,6 +568,7 @@ export function useMindMapStore() {
       editing: state.editing,
       richEditorId: state.richEditorId,
       generatingIds: state.generatingIds,
+      flashIds: state.flashIds,
       canUndo: state.past.length > 0,
       canRedo: state.future.length > 0,
     },

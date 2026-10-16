@@ -34,12 +34,27 @@ const CONTEXT_SAVE_DELAY_MS = 400;
  * map; the draft is written to the store shortly after typing stops, and on
  * blur (so a Generate click right after typing uses the latest text).
  */
-function ContextField() {
+function ContextField({
+  focus,
+  onFocused,
+}: {
+  focus?: boolean;
+  onFocused?: () => void;
+}) {
   const {context} = useMindMapState();
   const actions = useMindMapActions();
   const [draft, setDraft] = useState(context);
   const timeout = useRef<ReturnType<typeof setTimeout>>();
   const pending = useRef<string | null>(null);
+  const input = useRef<HTMLTextAreaElement>(null);
+
+  // Opened from the start hint ("Paste notes instead"), so the user can
+  // paste straight away. The request is cleared once it's been honoured.
+  useEffect(() => {
+    if (!focus) return;
+    input.current?.focus();
+    onFocused?.();
+  }, [focus, onFocused]);
 
   const commit = () => {
     clearTimeout(timeout.current);
@@ -60,6 +75,7 @@ function ContextField() {
       maxRows={22}
       fullWidth
       value={draft}
+      inputRef={input}
       onChange={(event) => {
         const value = event.target.value;
         setDraft(value);
@@ -80,10 +96,15 @@ export function ModelPanel({
   settings,
   onSettingsChange,
   onClose,
+  focusContext,
+  onContextFocused,
 }: {
   settings: AiSettings;
   onSettingsChange: (patch: Partial<AiSettings>) => void;
   onClose: () => void;
+  /** Put the cursor in the context box as soon as the panel opens. */
+  focusContext?: boolean;
+  onContextFocused?: () => void;
 }) {
   const {root, context, selectedId, generatingIds} = useMindMapState();
   const actions = useMindMapActions();
@@ -111,7 +132,11 @@ export function ModelPanel({
         </Typography>
 
         {/* Remounted per map, so a new or opened map shows its own context. */}
-        <ContextField key={root.id} />
+        <ContextField
+          key={root.id}
+          focus={focusContext}
+          onFocused={onContextFocused}
+        />
 
         <FormControlLabel
           disabled={!hasContext}
