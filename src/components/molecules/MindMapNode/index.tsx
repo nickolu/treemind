@@ -1,5 +1,12 @@
 'use client';
-import {CSSProperties, memo, MouseEvent, ReactNode, useState} from 'react';
+import {
+  CSSProperties,
+  memo,
+  MouseEvent,
+  ReactNode,
+  useRef,
+  useState,
+} from 'react';
 import {Handle, NodeProps, NodeToolbar, Position} from 'reactflow';
 import {CircularProgress, IconButton, Tooltip} from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
@@ -104,6 +111,18 @@ function MindMapNodeView({
 }: NodeProps<MindMapNodeData>) {
   const actions = useMindMapActions();
   const [shapeAnchor, setShapeAnchor] = useState<HTMLElement | null>(null);
+  // Text typed before picking a shape, carried over if the editor remounts.
+  const draftRef = useRef('');
+  const blurGuard = useRef(false);
+  const [draft, setDraft] = useState<string>();
+  if (!data.isEditing && draft !== undefined) {
+    // Editing ended: don't leak the draft into the next edit session.
+    setDraft(undefined);
+    draftRef.current = '';
+    blurGuard.current = false;
+  }
+  // A just-created node that is still empty and being named.
+  const isFresh = data.isEditing && !data.html;
   const hasChildren = data.childCount > 0;
   const uml = data.umlClass;
   // Classes and containers have their own look; otherwise the shape applies.
@@ -133,7 +152,9 @@ function MindMapNodeView({
     <InlineNodeEditor
       nodeId={id}
       html={data.html}
-      initialText={data.editInitialText}
+      initialText={draft ?? data.editInitialText}
+      blurGuard={blurGuard}
+      draftRef={draftRef}
     />
   ) : data.html ? (
     <NodeHtmlRenderer html={data.html} />
@@ -302,10 +323,30 @@ function MindMapNodeView({
           )}
         </div>
       </NodeToolbar>
+      <NodeToolbar
+        isVisible={isFresh && !data.isRoot && !dragging}
+        position={Position.Top}
+        offset={8}
+      >
+        <div className="mm-toolbar nodrag">
+          <ToolbarButton
+            title="Choose a shape…"
+            onClick={(event) => {
+              // The popover takes focus; don't let that discard the new node.
+              blurGuard.current = true;
+              setShapeAnchor(event.currentTarget);
+            }}
+          >
+            <CategoryOutlinedIcon fontSize="small" />
+          </ToolbarButton>
+        </div>
+      </NodeToolbar>
       <ShapePicker
         anchor={shapeAnchor}
         current={uml ? 'class' : (data.shape ?? null)}
         onPick={(choice) => {
+          // Changing shape remounts the editor; keep what was typed.
+          if (isFresh && draftRef.current) setDraft(draftRef.current);
           actions.setShape(id, choice);
           setShapeAnchor(null);
         }}
