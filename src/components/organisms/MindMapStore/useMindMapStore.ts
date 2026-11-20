@@ -19,6 +19,7 @@ import {
   Point,
 } from '@/domain/MindMap/tree';
 import {NodeShape} from '@/domain/MindMap/shapes';
+import type {ShapeChoice} from '@/components/molecules/ShapePicker/shapeGroups';
 import {
   LinkKind,
   MindLink,
@@ -453,12 +454,14 @@ export function useMindMapStore() {
       /**
        * Adds a node at a spot on the canvas: inside `parentId` (a container),
        * or unconnected when that's null. `position` is its freeform position;
-       * `positions` are other freeform positions stored in the same step.
+       * `positions` are other freeform positions stored in the same step; `shape`
+       * draws the new node as that shape (or a class) from the start.
        */
       addNodeAt: (
         parentId: string | null,
         position?: Point,
         positions?: Map<string, Point>,
+        shape?: ShapeChoice,
       ) =>
         apply(({root}) => {
           const parent = parentId ?? root.id;
@@ -467,6 +470,11 @@ export function useMindMapStore() {
             ...createNode(parent),
             ...(parentId === null ? {floating: true} : {}),
             ...(position ? {position} : {}),
+            ...(shape === 'class'
+              ? {umlClass: createUmlClass()}
+              : shape
+                ? {shape}
+                : {}),
           };
           return {
             root: insertChildren(withPositions(root, positions), parent, [

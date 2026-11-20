@@ -13,6 +13,7 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material';
+import CategoryOutlinedIcon from '@mui/icons-material/CategoryOutlined';
 import AccountTreeOutlinedIcon from '@mui/icons-material/AccountTreeOutlined';
 import NoteAddOutlinedIcon from '@mui/icons-material/NoteAddOutlined';
 import FolderOpenOutlinedIcon from '@mui/icons-material/FolderOpenOutlined';
@@ -97,9 +98,13 @@ function ToolButton({
 export function AppToolbar({
   panelOpen,
   onTogglePanel,
+  shapesOpen,
+  onToggleShapes,
 }: {
   panelOpen: boolean;
   onTogglePanel: () => void;
+  shapesOpen: boolean;
+  onToggleShapes: () => void;
 }) {
   const {root, links, context, layout, layoutSetByUser, canUndo, canRedo} =
     useMindMapState();
@@ -199,6 +204,13 @@ export function AppToolbar({
           onClick={(event) => setLayoutAnchor(event.currentTarget)}
         >
           {LAYOUT_ICONS[layout]}
+        </ToolButton>
+        <ToolButton
+          title={shapesOpen ? 'Hide shapes' : 'Shapes'}
+          onClick={onToggleShapes}
+          active={shapesOpen}
+        >
+          <CategoryOutlinedIcon fontSize="small" />
         </ToolButton>
         <ToolButton
           title="Add a node that stands on its own (or double-click the canvas)"

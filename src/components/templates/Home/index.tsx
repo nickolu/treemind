@@ -21,6 +21,8 @@ import {useGenerateIdeas} from '@/components/molecules/AiGeneratedNodes/useGener
 import {useAiSettings} from '@/components/molecules/AiDiagram/useAiSettings';
 import {useExpandDiagram} from '@/components/molecules/AiDiagram/useExpandDiagram';
 import {useDesignDiagram} from '@/components/molecules/AiDiagram/useDesignDiagram';
+import {ShapeSidebar} from '@/components/organisms/ShapeSidebar';
+import {useShapePreference} from '@/components/organisms/ShapeSidebar/useShapePreference';
 import {ModelPanel} from '@/components/organisms/ModelPanel';
 import {useMindMapKeyboardShortcuts} from '@/components/molecules/MindMapKeyboardEvents/useMindMapKeyboardShortcuts';
 
@@ -57,6 +59,12 @@ function HomePage() {
   const {settings: aiSettings, update: updateAiSettings} = useAiSettings();
   const aiSettingsRef = useRef(aiSettings);
   aiSettingsRef.current = aiSettings;
+  const {
+    shape,
+    setShape,
+    open: shapesOpen,
+    setOpen: setShapesOpen,
+  } = useShapePreference();
   const [panelOpen, setPanelOpen] = useState(false);
   // A one-shot request, cleared once the panel has taken focus, so later
   // re-renders (or a new map) can't steal focus from the canvas.
@@ -117,9 +125,14 @@ function HomePage() {
               <AppToolbar
                 panelOpen={panelOpen}
                 onTogglePanel={() => setPanelOpen((open) => !open)}
+                shapesOpen={shapesOpen}
+                onToggleShapes={() => setShapesOpen(!shapesOpen)}
               />
               <div className="mm-body">
-                <MindMapCanvas />
+                {shapesOpen && (
+                  <ShapeSidebar shape={shape} onSelect={setShape} />
+                )}
+                <MindMapCanvas defaultShape={shape} />
                 {panelOpen && (
                   <ModelPanel
                     settings={aiSettings}
