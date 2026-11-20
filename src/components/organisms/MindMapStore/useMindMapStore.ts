@@ -102,6 +102,12 @@ interface Commit {
   links?: MindLink[];
   /** New layout, applied in the same history entry as the edit. */
   layout?: LayoutKind;
+  /**
+   * Marks the layout as chosen by the user (so AI expansion won't re-pick it).
+   * Deliberately not part of history snapshots: undoing leaves it set, which
+   * only stops automatic layout picking, since the user showed intent.
+   */
+  layoutSetByUser?: true;
   selectedId?: string;
   editId?: string;
 }
@@ -161,6 +167,7 @@ function reducer(state: StoreState, action: Action): StoreState {
         root: commit.root,
         links,
         layout: layoutChanged && commit.layout ? commit.layout : state.layout,
+        layoutSetByUser: commit.layoutSetByUser ? true : state.layoutSetByUser,
         future: changed ? [] : state.future,
         selectedId: commit.selectedId ?? state.selectedId,
         editing: commit.editId ? {id: commit.editId} : state.editing,
@@ -484,6 +491,17 @@ export function useMindMapStore() {
       /** Stores freeform positions, as one undoable step. */
       setPositions: (positions: Map<string, Point>) =>
         apply(({root}) => ({root: withPositions(root, positions)})),
+
+      /**
+       * Switches to free-form with every given node pinned, as ONE undoable
+       * step (undo restores the previous layout and positions together).
+       */
+      switchToFreeform: (positions: Map<string, Point>) =>
+        apply(({root}) => ({
+          root: withPositions(root, positions),
+          layout: 'freeform',
+          layoutSetByUser: true,
+        })),
 
       /** Forgets all freeform positions, so the map is arranged automatically. */
       clearPositions: () =>

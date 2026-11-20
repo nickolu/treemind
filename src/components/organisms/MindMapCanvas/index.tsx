@@ -18,6 +18,7 @@ import ReactFlow, {
   OnConnectStartParams,
   useNodesInitialized,
   useReactFlow,
+  useViewport,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import {MindNode, Point, findNode} from '@/domain/MindMap/tree';
@@ -48,12 +49,31 @@ const nodeTypes = {mindMapNode: MindMapNode};
 const edgeTypes = {link: LinkEdge, tree: TreeEdge};
 const FIT_VIEW_OPTIONS = {padding: 0.2, maxZoom: 1};
 const FOLLOW_MARGIN = 48;
+/** Dragging a node this far (screen px) from its slot switches to free-form. */
+const SWITCH_DISTANCE_PX = 140;
 
 interface DragState {
   id: string;
   subtree: Set<string>;
   offset: XY;
   dropTargetId: string | null;
+}
+
+type DragIntent = 'reparent' | 'switch' | 'none';
+
+/**
+ * What releasing a non-freeform drag would do. Shared by the indicator and the
+ * drop handler so what the user sees is what happens. A valid drop target
+ * (not the current parent) always wins over the distance threshold.
+ */
+function dragIntent(
+  drag: DragState,
+  zoom: number,
+  parentId: string | undefined,
+): DragIntent {
+  if (drag.dropTargetId && drag.dropTargetId !== parentId) return 'reparent';
+  const distance = Math.hypot(drag.offset.x, drag.offset.y) * zoom;
+  return distance > SWITCH_DISTANCE_PX ? 'switch' : 'none';
 }
 
 function visibleSubtreeIds(node: MindNode, ids = new Set<string>()) {
@@ -83,6 +103,43 @@ function nodeAt(
   return plain ?? hits.filter((n) => n.container).at(-1);
 }
 
+/** Dashed threshold circle around the dragged node's slot, plus the hint pill. */
+function DragIndicator({
+  drag,
+  layout,
+  slot,
+  viewport,
+  parentId,
+}: {
+  drag: DragState;
+  layout: Layout;
+  slot: XY;
+  viewport: {x: number; y: number; zoom: number};
+  parentId: string | undefined;
+}) {
+  const size = layout.byId.get(drag.id)?.size ?? DEFAULT_SIZE;
+  const cx = (slot.x + size.width / 2) * viewport.zoom + viewport.x;
+  const cy = (slot.y + size.height / 2) * viewport.zoom + viewport.y;
+  const active = dragIntent(drag, viewport.zoom, parentId) === 'switch';
+  return (
+    <>
+      <svg className="mm-link-preview mm-drag-threshold" aria-hidden>
+        <circle
+          className={active ? 'mm-drag-threshold--active' : undefined}
+          cx={cx}
+          cy={cy}
+          r={SWITCH_DISTANCE_PX}
+        />
+      </svg>
+      {active && (
+        <div className="mm-link-hint" role="status">
+          Release to switch to free-form
+        </div>
+      )}
+    </>
+  );
+}
+
 export function MindMapCanvas() {
   const {
     root,
@@ -105,6 +162,9 @@ export function MindMapCanvas() {
 
   const [drag, setDrag] = useState<DragState | null>(null);
   const animated = useAnimatedPositions(layout, drag !== null);
+  // Subscribed so the drag indicator stays anchored when the viewport pans.
+  const viewport = useViewport();
+  const skipFitRef = useRef(false);
 
   // Reuse data objects that haven't changed so memoized nodes skip re-rendering.
   const dataCache = useRef(new Map<string, MindMapNodeData>());
@@ -348,10 +408,16 @@ export function MindMapCanvas() {
       });
       setDrag((prev) => {
         if (!prev) return prev;
+        // Outside freeform the current parent isn't a drop target: dropping
+        // there changes nothing.
+        const parentId =
+          layout.kind === 'freeform'
+            ? undefined
+            : findNode(root, prev.id)?.parentId;
         const target = nodeAt(
           layout,
           pointer,
-          (id) => prev.subtree.has(id),
+          (id) => prev.subtree.has(id) || id === parentId,
           layout.kind === 'freeform',
         );
         const dropTargetId = target?.id ?? null;
@@ -360,7 +426,7 @@ export function MindMapCanvas() {
           : {...prev, dropTargetId};
       });
     },
-    [layout, reactFlow],
+    [layout, root, reactFlow],
   );
 
   /**
@@ -404,8 +470,17 @@ export function MindMapCanvas() {
     }
 
     if (!parent) return;
-    if (drag.dropTargetId && drag.dropTargetId !== parent.id) {
+    const intent = dragIntent(drag, reactFlow.getViewport().zoom, parent.id);
+    if (intent === 'reparent' && drag.dropTargetId) {
       actions.move(drag.id, drag.dropTargetId);
+      return;
+    }
+    if (intent === 'switch') {
+      // Seed from what's drawn (not stale pins) so no other node jumps.
+      const positions = displayedPositions();
+      dropped.forEach((position, id) => positions.set(id, position));
+      skipFitRef.current = true;
+      actions.switchToFreeform(positions);
       return;
     }
     if (layout.kind !== 'mindmap' && layout.kind !== 'tree') return;
@@ -429,7 +504,16 @@ export function MindMapCanvas() {
     if (index !== currentIndex) {
       actions.move(drag.id, parent.id, index, !!treeNode.floating);
     }
-  }, [drag, layout, root, animated, actions, pinsForFreeform]);
+  }, [
+    drag,
+    layout,
+    root,
+    animated,
+    actions,
+    pinsForFreeform,
+    displayedPositions,
+    reactFlow,
+  ]);
 
   const onNodeClick = useCallback(
     (_: MouseEvent, node: Node) => {
@@ -555,6 +639,11 @@ export function MindMapCanvas() {
   useEffect(() => {
     if (fittedKindRef.current === layout.kind) return;
     fittedKindRef.current = layout.kind;
+    // A drag-triggered switch keeps the camera where it is.
+    if (skipFitRef.current) {
+      skipFitRef.current = false;
+      return;
+    }
     const timeout = setTimeout(
       () => reactFlow.fitView({...FIT_VIEW_OPTIONS, duration: 300}),
       260,
@@ -635,6 +724,15 @@ export function MindMapCanvas() {
             y2={preview.to.y}
           />
         </svg>
+      )}
+      {drag && !freeform && drag.id !== root.id && (
+        <DragIndicator
+          drag={drag}
+          layout={layout}
+          slot={animated.get(drag.id)}
+          viewport={viewport}
+          parentId={findNode(root, drag.id)?.parentId ?? undefined}
+        />
       )}
       {linkingFrom && (
         <div className="mm-link-hint" role="status">

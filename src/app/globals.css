@@ -493,6 +493,18 @@ a {
   stroke-dasharray: 6 4;
 }
 
+.mm-drag-threshold circle {
+  fill: none;
+  stroke: var(--link);
+  stroke-width: 1.5;
+  stroke-dasharray: 6 4;
+}
+
+.mm-drag-threshold circle.mm-drag-threshold--active {
+  stroke: var(--accent);
+  fill: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
 .mm-link-hint {
   position: absolute;
   top: 12px;
