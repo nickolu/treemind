@@ -1,30 +1,9 @@
 'use client';
 import {Box, ButtonBase, Popover, Typography} from '@mui/material';
-import {NodeShape, SHAPES, SHAPE_IDS} from '@/domain/MindMap/shapes';
 import {ShapeGlyph} from '@/components/atoms/NodeShape';
+import {SHAPE_GROUPS, ShapeChoice, shapeHint} from './shapeGroups';
 
-export type ShapeChoice = NodeShape | 'class' | null;
-
-const GROUPS: {title: string; items: {id: ShapeChoice; name: string}[]}[] = [
-  {
-    title: 'General',
-    items: [
-      {id: null, name: 'Topic'},
-      {id: 'class', name: 'Class'},
-      ...SHAPE_IDS.filter((id) => SHAPES[id].group === 'Basic').map((id) => ({
-        id,
-        name: SHAPES[id].name,
-      })),
-    ],
-  },
-  ...(['UML', 'Flowchart'] as const).map((group) => ({
-    title: group,
-    items: SHAPE_IDS.filter((id) => SHAPES[id].group === group).map((id) => ({
-      id: id as ShapeChoice,
-      name: SHAPES[id].name,
-    })),
-  })),
-];
+export type {ShapeChoice};
 
 /** Grid of shapes (plus topic and class) to draw a node as. */
 export function ShapePicker({
@@ -49,7 +28,7 @@ export function ShapePicker({
       // Keep keystrokes in the picker from reaching the map.
       onKeyDown={(event) => event.stopPropagation()}
     >
-      {GROUPS.map((group) => (
+      {SHAPE_GROUPS.map((group) => (
         <Box key={group.title} sx={{'& + &': {mt: 1}}}>
           <Typography
             variant="overline"
@@ -71,7 +50,7 @@ export function ShapePicker({
                 className={`mm-shape-option ${current === id ? 'mm-shape-option--current' : ''}`}
                 onClick={() => onPick(id)}
                 aria-pressed={current === id}
-                title={id && id !== 'class' ? SHAPES[id].hint : name}
+                title={shapeHint(id, name)}
               >
                 <ShapeGlyph shape={id ?? 'topic'} />
                 <span>{name}</span>

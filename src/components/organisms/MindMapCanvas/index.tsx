@@ -1,5 +1,6 @@
 'use client';
 import {
+  DragEvent,
   MouseEvent,
   useCallback,
   useEffect,
@@ -22,6 +23,7 @@ import ReactFlow, {
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import {MindNode, Point, findNode} from '@/domain/MindMap/tree';
+import {isNodeShape} from '@/domain/MindMap/shapes';
 import {hasRichFormatting, htmlToText} from '@/domain/MindMap/html';
 import {MindMapNode, MindMapNodeData} from '@/components/molecules/MindMapNode';
 import {
@@ -37,6 +39,8 @@ import {
   XY,
   hasPinnedNodes,
 } from './layout';
+import {ShapeChoice} from '@/components/molecules/ShapePicker/shapeGroups';
+import {SHAPE_DRAG_TYPE} from '@/components/organisms/ShapeSidebar';
 import {useCanvasLayout} from './useCanvasLayout';
 import {useAnimatedPositions} from './useAnimatedPositions';
 import {LinkEdge, LinkEdgeData, LinkMarkers} from './LinkEdge';
@@ -140,7 +144,19 @@ function DragIndicator({
   );
 }
 
-export function MindMapCanvas() {
+/** The shape named by a dragged sidebar item; undefined if it isn't valid. */
+function parseDraggedShape(value: string): ShapeChoice | undefined {
+  if (value === 'topic') return null;
+  if (value === 'class' || isNodeShape(value)) return value as ShapeChoice;
+  return undefined;
+}
+
+export function MindMapCanvas({
+  defaultShape = null,
+}: {
+  /** What double-clicking the canvas creates. */
+  defaultShape?: ShapeChoice;
+}) {
   const {
     root,
     links,
@@ -161,6 +177,7 @@ export function MindMapCanvas() {
   const freeform = layout.kind === 'freeform';
 
   const [drag, setDrag] = useState<DragState | null>(null);
+  const [shapeDropId, setShapeDropId] = useState<string | null>(null);
   const animated = useAnimatedPositions(layout, drag !== null);
   // Subscribed so the drag indicator stays anchored when the viewport pans.
   const viewport = useViewport();
@@ -197,7 +214,8 @@ export function MindMapCanvas() {
           editing?.id === treeNode.id ? editing.initialText : undefined,
         isGenerating: generating.has(treeNode.id),
         isNew: flashed.has(treeNode.id),
-        isDropTarget: drag?.dropTargetId === treeNode.id,
+        isDropTarget:
+          drag?.dropTargetId === treeNode.id || shapeDropId === treeNode.id,
         umlClass: treeNode.umlClass,
         origin: treeNode.origin,
         shape: treeNode.shape,
@@ -258,6 +276,7 @@ export function MindMapCanvas() {
     root,
     animated,
     drag,
+    shapeDropId,
     sizes,
     selectedId,
     editing,
@@ -545,6 +564,32 @@ export function MindMapCanvas() {
   }, [actions, linkingFrom]);
 
   /**
+   * Adds a node of `shape` at a screen point. Freeform: at the point, inside
+   * the container under it. Other layouts: `anywhere` lets any node under the
+   * point be the parent (a drop); otherwise only containers count. With no
+   * parent the node floats. The layout never changes.
+   */
+  const createAt = useCallback(
+    (client: XY, shape: ShapeChoice, parentRule: 'containers' | 'any') => {
+      const point = reactFlow.screenToFlowPosition(client);
+      if (freeform) {
+        const container = nodeAt(layout, point, () => false, true);
+        const at = {x: point.x - DEFAULT_SIZE.width / 2, y: point.y - 20};
+        actions.addNodeAt(container?.id ?? null, at, pinsForFreeform(), shape);
+      } else {
+        const parent = nodeAt(
+          layout,
+          point,
+          () => false,
+          parentRule === 'containers',
+        );
+        actions.addNodeAt(parent?.id ?? null, undefined, undefined, shape);
+      }
+    },
+    [reactFlow, layout, freeform, actions, pinsForFreeform],
+  );
+
+  /**
    * Double-clicking empty canvas adds a node there: inside the container
    * under the pointer, or unconnected. (React Flow has no pane double-click
    * event, so this listens on the wrapper.)
@@ -560,19 +605,47 @@ export function MindMapCanvas() {
       ) {
         return;
       }
+      createAt(
+        {x: event.clientX, y: event.clientY},
+        defaultShape,
+        'containers',
+      );
+    },
+    [createAt, defaultShape],
+  );
+
+  // A shape dragged in from the sidebar highlights what it would land in.
+  const onShapeDragOver = useCallback(
+    (event: DragEvent) => {
+      if (!event.dataTransfer.types.includes(SHAPE_DRAG_TYPE)) return;
+      event.preventDefault();
+      event.dataTransfer.dropEffect = 'copy';
       const point = reactFlow.screenToFlowPosition({
         x: event.clientX,
         y: event.clientY,
       });
-      const container = nodeAt(layout, point, () => false, true);
-      if (freeform) {
-        const at = {x: point.x - DEFAULT_SIZE.width / 2, y: point.y - 20};
-        actions.addNodeAt(container?.id ?? null, at, pinsForFreeform());
-      } else {
-        actions.addNodeAt(container?.id ?? null);
-      }
+      const target = nodeAt(layout, point, () => false, freeform);
+      setShapeDropId(target?.id ?? null);
     },
-    [reactFlow, layout, freeform, actions, pinsForFreeform],
+    [reactFlow, layout, freeform],
+  );
+  const onShapeDragLeave = useCallback((event: DragEvent) => {
+    if (!event.currentTarget.contains(event.relatedTarget as globalThis.Node | null)) {
+      setShapeDropId(null);
+    }
+  }, []);
+  const onShapeDrop = useCallback(
+    (event: DragEvent) => {
+      if (!event.dataTransfer.types.includes(SHAPE_DRAG_TYPE)) return;
+      event.preventDefault();
+      setShapeDropId(null);
+      const shape = parseDraggedShape(
+        event.dataTransfer.getData(SHAPE_DRAG_TYPE),
+      );
+      if (shape === undefined) return;
+      createAt({x: event.clientX, y: event.clientY}, shape, 'any');
+    },
+    [createAt],
   );
 
   // Link mode: a line follows the pointer from the source node.
@@ -656,6 +729,9 @@ export function MindMapCanvas() {
       ref={containerRef}
       className={`mm-canvas ${linkingFrom ? 'mm-canvas--linking' : ''}`}
       onDoubleClick={onCanvasDoubleClick}
+      onDragOver={onShapeDragOver}
+      onDragLeave={onShapeDragLeave}
+      onDrop={onShapeDrop}
       onMouseMove={(event) => {
         if (!linkingFrom || !containerRef.current) return;
         const rect = containerRef.current.getBoundingClientRect();
