@@ -435,10 +435,12 @@ export function MindMapCanvas() {
 
   // Classes have several fields, so they open in the class editor.
   const onNodeDoubleClick = useCallback(
-    (_: MouseEvent, node: Node<MindMapNodeData>) =>
-      node.data.umlClass
-        ? actions.openRichEditor(node.id)
-        : actions.startEditing(node.id),
+    (event: MouseEvent, node: Node<MindMapNodeData>) => {
+      // Keep the wrapper's canvas double-click from also adding a node.
+      event.stopPropagation();
+      if (node.data.umlClass) actions.openRichEditor(node.id);
+      else actions.startEditing(node.id);
+    },
     [actions],
   );
 
@@ -457,7 +459,7 @@ export function MindMapCanvas() {
       if (
         !target.closest('.react-flow__pane') ||
         target.closest(
-          '.react-flow__edge, .react-flow__controls, .react-flow__minimap, .mm-container__header',
+          '.react-flow__node, .react-flow__edge, .react-flow__controls, .react-flow__minimap, .mm-container__header',
         )
       ) {
         return;

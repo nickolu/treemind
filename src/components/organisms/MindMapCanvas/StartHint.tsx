@@ -29,7 +29,7 @@ export function StartHint() {
     <div className="mm-start-hint" role="note">
       <span className="mm-start-hint__text">
         {named
-          ? 'Brainstorm branches with AI, or build the map from your own notes.'
+          ? 'Add detail with AI, or build the map from your own notes.'
           : 'Type to name your central topic — then let AI take it from there.'}
       </span>
       <Button
@@ -40,9 +40,9 @@ export function StartHint() {
         disabled={!named || generatingIds.length > 0}
         // Clicking must not take keyboard focus off the map.
         onMouseDown={(event) => event.preventDefault()}
-        onClick={() => actions.generateIdeas(root.id)}
+        onClick={() => actions.expandNode(root.id)}
       >
-        Brainstorm it
+        Add detail
       </Button>
       <Button
         size="small"
