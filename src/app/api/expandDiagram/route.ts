@@ -1,7 +1,4 @@
-import {NextResponse} from 'next/server';
-import OpenAI from 'openai';
-import {ensureSafeUserInput} from '@/app/utils/openaiUtils/ensureSafeUserInput';
-import {FAST_REASONING, resolveAiModel} from '@/app/utils/aiModels';
+import {resolveAiModel} from '@/app/utils/aiModels';
 import {
   AI_LAYOUT_CHOICES,
   type AiLayoutChoice,
@@ -9,27 +6,23 @@ import {
   type ExpandDiagramResponse,
 } from '@/app/utils/diagramAi';
 import {LAYOUTS, isLayoutKind} from '@/domain/MindMap/document';
-import {LINK_KINDS, LINK_KIND_IDS, isLinkKind} from '@/domain/MindMap/links';
-import {SHAPES, SHAPE_IDS, isNodeShape} from '@/domain/MindMap/shapes';
+import {LINK_KIND_IDS, isLinkKind} from '@/domain/MindMap/links';
+import {SHAPE_IDS, isNodeShape} from '@/domain/MindMap/shapes';
+import {
+  MAX_CONTEXT_LENGTH,
+  MAX_MAP_LENGTH,
+  handleDiagramPost,
+  layoutGuide,
+  linkKindGuide,
+  list,
+  shapeGuide,
+  stringArray,
+  text,
+  texts,
+} from '../_shared/diagramRoute';
 
-const MAX_MAP_LENGTH = 60_000;
-const MAX_CONTEXT_LENGTH = 100_000;
 const MAX_TARGETS = 40;
 const MAX_NEW_NODES = 200;
-
-const shapeGuide = SHAPE_IDS.map(
-  (shape) => `  - ${shape}: ${SHAPES[shape].hint}`,
-).join('\n');
-
-const linkKindGuide = LINK_KIND_IDS.map(
-  (kind) => `  - ${kind}: ${LINK_KINDS[kind].description.toLowerCase()}`,
-).join('\n');
-
-const layoutGuide = AI_LAYOUT_CHOICES.map((id) =>
-  id === 'keep'
-    ? '  - keep: leave the layout as it is'
-    : `  - ${id}: ${LAYOUTS[id].description}`,
-).join('\n');
 
 function buildPrompt({
   map,
@@ -118,8 +111,6 @@ SOURCE>>>`
   }`;
 }
 
-const stringArray = {type: 'array', items: {type: 'string'}};
-
 const RESPONSE_SCHEMA = {
   type: 'object',
   additionalProperties: false,
@@ -201,22 +192,6 @@ const RESPONSE_SCHEMA = {
   },
 };
 
-const text = (value: unknown, max = 200) =>
-  typeof value === 'string' ? value.trim().slice(0, max) : '';
-
-const texts = (value: unknown, max = 30) =>
-  Array.isArray(value)
-    ? value
-        .map((v) => text(v))
-        .filter(Boolean)
-        .slice(0, max)
-    : [];
-
-const list = (value: unknown) =>
-  (Array.isArray(value) ? value : []).filter(
-    (v): v is Record<string, unknown> => !!v && typeof v === 'object',
-  );
-
 /** The schema is enforced by the API, but the output is still untrusted. */
 function sanitize(raw: unknown): ExpandDiagramResponse {
   const value = (raw ?? {}) as Record<string, unknown>;
@@ -295,65 +270,15 @@ function parseRequest(body: unknown): ExpandDiagramRequest | string {
   };
 }
 
-export async function POST(request: Request) {
-  if (!process.env.OPENAI_API_KEY) {
-    return NextResponse.json(
-      {error: 'OPENAI_API_KEY is not configured on the server.'},
-      {status: 500},
-    );
-  }
-
-  let parsed: ExpandDiagramRequest | string;
-  try {
-    parsed = parseRequest(await request.json());
-  } catch {
-    return NextResponse.json({error: 'Invalid request body.'}, {status: 400});
-  }
-  if (typeof parsed === 'string') {
-    return NextResponse.json({error: parsed}, {status: 400});
-  }
-  const input = parsed;
-
-  try {
-    const openai = new OpenAI({apiKey: process.env.OPENAI_API_KEY});
-
-    // As in generateContextualNodes, the safety check runs alongside
-    // generation and the result is discarded if the input is unsafe.
-    const [safety, completion] = await Promise.all([
-      ensureSafeUserInput(`${input.map}\n\n${input.context}`) as Promise<{
-        isSafe: boolean;
-        reason: string;
-      }>,
-      openai.chat.completions.create({
-        model: input.model,
-        ...FAST_REASONING,
-        messages: [{role: 'user', content: buildPrompt(input)}],
-        response_format: {
-          type: 'json_schema',
-          json_schema: {
-            name: 'diagram_expansion',
-            strict: true,
-            schema: RESPONSE_SCHEMA,
-          },
-        },
-      }),
-    ]);
-
-    if (!safety?.isSafe) {
-      console.error('Unsafe input:', safety?.reason);
-      return NextResponse.json(
-        {error: 'This content can’t be used to generate a diagram.'},
-        {status: 400},
-      );
-    }
-
-    const content = completion.choices[0]?.message.content ?? '{}';
-    return NextResponse.json(sanitize(JSON.parse(content)));
-  } catch (error) {
-    console.error(error);
-    return NextResponse.json(
-      {error: 'The AI service is unavailable. Please try again.'},
-      {status: 502},
-    );
-  }
+export function POST(request: Request) {
+  return handleDiagramPost<ExpandDiagramRequest, ExpandDiagramResponse>({
+    request,
+    parse: parseRequest,
+    buildPrompt,
+    model: (input) => input.model,
+    safetyText: (input) => `${input.map}\n\n${input.context}`,
+    schemaName: 'diagram_expansion',
+    schema: RESPONSE_SCHEMA,
+    sanitize,
+  });
 }

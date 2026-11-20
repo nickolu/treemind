@@ -1,9 +1,10 @@
 import {v4 as uuidv4} from 'uuid';
-import {MindNode, UmlClass} from '@/domain/MindMap/tree';
+import {MindNode, UmlClass, collectIds} from '@/domain/MindMap/tree';
 import {LinkKind, MindLink} from '@/domain/MindMap/links';
 import {Generation} from '@/domain/MindMap/generation';
+import {DesignGeneration, mergeMembers} from '@/domain/MindMap/design';
 import {htmlToText} from '@/domain/MindMap/html';
-import {isNodeShape} from '@/domain/MindMap/shapes';
+import {NodeShape, isNodeShape} from '@/domain/MindMap/shapes';
 import type {LayoutKind} from '@/domain/MindMap/document';
 
 /** Layouts the AI may answer with. 'freeform' is deliberately absent. */
@@ -59,6 +60,31 @@ export interface ExpandDiagramResponse {
   }[];
   removeLinks: string[];
   addLinks: {from: string; to: string; kind: LinkKind; label: string}[];
+}
+
+/**
+ * Contract between the client and /api/designDiagram: the whole map as text
+ * (same refs as above); the model answers with changes to what is there.
+ */
+export interface DesignDiagramRequest {
+  map: string;
+  model: string;
+}
+
+export interface DesignDiagramResponse {
+  layout: AiLayoutChoice;
+  setShapes: {ref: string; shape: NodeShape}[];
+  makeClasses: {
+    ref: string;
+    stereotype: string;
+    attributes: string[];
+    operations: string[];
+  }[];
+  linkUpdates: {link: string; kind: LinkKind; label: string}[];
+  addLinks: {from: string; to: string; kind: LinkKind; label: string}[];
+  moves: {ref: string; parent: string}[];
+  /** `ref` is a local name (g1, g2…); members and parent are node refs. */
+  groups: {ref: string; parent: string; text: string; members: string[]}[];
 }
 
 /** Placeholder root names the AI may replace with a real subject. */
@@ -143,19 +169,6 @@ export function describeDiagram(
   };
 }
 
-/** Appends new members, skipping ones the class already has. */
-function mergeMembers(existing: string[], added: string[]) {
-  const seen = new Set(existing.map((m) => oneLine(m).toLowerCase()));
-  const result = [...existing];
-  for (const member of added.map(oneLine)) {
-    const key = member.toLowerCase();
-    if (!member || seen.has(key)) continue;
-    seen.add(key);
-    result.push(member);
-  }
-  return result;
-}
-
 /** Maps the model's refs back to ids, producing something the store can apply. */
 export function toGeneration(
   response: ExpandDiagramResponse,
@@ -233,6 +246,69 @@ export function toGeneration(
       const from = idFor(spec.from);
       const to = idFor(spec.to);
       return from && to ? [{from, to, kind: spec.kind, label: spec.label}] : [];
+    }),
+  };
+}
+
+/**
+ * Maps a design response to ids against the LATEST tree and links: refs that
+ * are unknown, or whose node / link has been deleted since the request was
+ * made, are dropped. Groups are local to the response and never nest.
+ */
+export function toDesign(
+  response: DesignDiagramResponse,
+  prompt: Pick<DiagramPrompt, 'nodeIds' | 'linkIds'>,
+  root: MindNode,
+  links: MindLink[],
+): DesignGeneration {
+  const live = collectIds(root);
+  const liveLinks = new Set(links.map((l) => l.id));
+  const nodeId = (ref: string) => {
+    const id = prompt.nodeIds.get(ref);
+    return id && live.has(id) ? id : undefined;
+  };
+
+  const groupRefs = new Set<string>();
+  return {
+    shapes: response.setShapes.flatMap((s) => {
+      const id = nodeId(s.ref);
+      return id && isNodeShape(s.shape) ? [{id, shape: s.shape}] : [];
+    }),
+    classes: response.makeClasses.flatMap((c) => {
+      const id = nodeId(c.ref);
+      return id
+        ? [
+            {
+              id,
+              stereotype: c.stereotype,
+              attributes: c.attributes,
+              operations: c.operations,
+            },
+          ]
+        : [];
+    }),
+    linkUpdates: response.linkUpdates.flatMap((u) => {
+      const id = prompt.linkIds.get(u.link);
+      return id && liveLinks.has(id)
+        ? [{id, kind: u.kind, label: u.label}]
+        : [];
+    }),
+    addLinks: response.addLinks.flatMap((l) => {
+      const from = nodeId(l.from);
+      const to = nodeId(l.to);
+      return from && to ? [{from, to, kind: l.kind, label: l.label}] : [];
+    }),
+    moves: response.moves.flatMap((m) => {
+      const id = nodeId(m.ref);
+      const parentId = nodeId(m.parent);
+      return id && parentId ? [{id, parentId}] : [];
+    }),
+    groups: response.groups.flatMap((g) => {
+      const parentId = nodeId(g.parent);
+      if (!parentId || !g.ref || groupRefs.has(g.ref)) return [];
+      groupRefs.add(g.ref);
+      const memberIds = [...new Set(g.members.flatMap((m) => nodeId(m) ?? []))];
+      return [{id: uuidv4(), parentId, text: g.text, memberIds}];
     }),
   };
 }

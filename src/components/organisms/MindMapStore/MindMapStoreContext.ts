@@ -9,6 +9,8 @@ export type AppActions = MindMapActions & {
   expandNode: (nodeId: string) => void;
   /** Adds one level of AI detail across the whole map. */
   expandAll: () => void;
+  /** Asks the AI to redesign the whole map's shapes, classes, links and groups. */
+  designDiagram: () => void;
   notify: (message: string, severity?: 'success' | 'error' | 'info') => void;
   /** Opens the AI modeling panel with the context box focused. */
   openAiPanel: () => void;

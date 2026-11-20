@@ -20,6 +20,7 @@ import {EditorModal} from '@/components/molecules/EditorModal';
 import {useGenerateIdeas} from '@/components/molecules/AiGeneratedNodes/useGenerateIdeas';
 import {useAiSettings} from '@/components/molecules/AiDiagram/useAiSettings';
 import {useExpandDiagram} from '@/components/molecules/AiDiagram/useExpandDiagram';
+import {useDesignDiagram} from '@/components/molecules/AiDiagram/useDesignDiagram';
 import {ModelPanel} from '@/components/organisms/ModelPanel';
 import {useMindMapKeyboardShortcuts} from '@/components/molecules/MindMapKeyboardEvents/useMindMapKeyboardShortcuts';
 
@@ -77,16 +78,31 @@ function HomePage() {
     storeActions,
     notify,
   );
+  const designDiagram = useDesignDiagram(
+    stateRef,
+    aiSettingsRef,
+    storeActions,
+    notify,
+  );
   const actions = useMemo<AppActions>(
     () => ({
       ...storeActions,
       generateIdeas,
       expandNode,
       expandAll,
+      designDiagram,
       notify,
       openAiPanel,
     }),
-    [storeActions, generateIdeas, expandNode, expandAll, notify, openAiPanel],
+    [
+      storeActions,
+      generateIdeas,
+      expandNode,
+      expandAll,
+      designDiagram,
+      notify,
+      openAiPanel,
+    ],
   );
 
   useMindMapKeyboardShortcuts(state, actions);
