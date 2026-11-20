@@ -16,7 +16,7 @@ import {
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import LayersOutlinedIcon from '@mui/icons-material/LayersOutlined';
-import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import AutoAwesomeMotionOutlinedIcon from '@mui/icons-material/AutoAwesomeMotionOutlined';
 import {findNode} from '@/domain/MindMap/tree';
 import {htmlToText} from '@/domain/MindMap/html';
 import {AI_MODELS} from '@/app/utils/aiModels';
@@ -211,7 +211,7 @@ export function ModelPanel({
         <Stack spacing={1}>
           <Button
             variant="contained"
-            startIcon={<AutoAwesomeIcon />}
+            startIcon={<AutoAwesomeMotionOutlinedIcon />}
             disabled={busy}
             onClick={actions.expandAll}
           >
