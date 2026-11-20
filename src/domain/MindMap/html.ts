@@ -43,6 +43,14 @@ export function textToHtml(text: string): string {
 
 const BLOCK_TAGS = new Set(['DIV', 'P', 'LI', 'UL', 'OL']);
 
+/** Non-empty, trimmed lines of a multi-line text field. */
+export function toLines(text: string): string[] {
+  return text
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+}
+
 /** Plain-text version of node HTML, preserving line breaks. */
 export function htmlToText(html: string): string {
   if (!html) return '';

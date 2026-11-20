@@ -21,7 +21,7 @@ import ReactFlow, {
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import {MindNode, Point, findNode} from '@/domain/MindMap/tree';
-import {htmlToText} from '@/domain/MindMap/html';
+import {hasRichFormatting, htmlToText} from '@/domain/MindMap/html';
 import {MindMapNode, MindMapNodeData} from '@/components/molecules/MindMapNode';
 import {
   useMindMapActions,
@@ -125,7 +125,14 @@ export function MindMapCanvas() {
         isRoot,
         childCount: treeNode.children.length,
         collapsed: !!treeNode.collapsed,
-        isEditing: editing?.id === treeNode.id,
+        isEditing:
+          editing?.id === treeNode.id &&
+          !(editing.mode === 'class' && treeNode.umlClass),
+        isClassEditing:
+          editing?.id === treeNode.id &&
+          editing.mode === 'class' &&
+          !!treeNode.umlClass,
+        editField: editing?.id === treeNode.id ? editing.field : undefined,
         editInitialText:
           editing?.id === treeNode.id ? editing.initialText : undefined,
         isGenerating: generating.has(treeNode.id),
@@ -165,7 +172,10 @@ export function MindMapCanvas() {
             : base,
           data: stable,
           selected: layoutNode.id === selectedId,
-          draggable: (!isRoot || freeform) && !stable.isEditing,
+          draggable:
+            (!isRoot || freeform) &&
+            !stable.isEditing &&
+            !stable.isClassEditing,
           // Containers stack by depth below edges; nodes sit above both.
           zIndex: layoutNode.container
             ? layoutNode.depth
@@ -433,12 +443,14 @@ export function MindMapCanvas() {
     [actions, linkingFrom],
   );
 
-  // Classes have several fields, so they open in the class editor.
+  // Classes have several fields, so they edit in place with all of them open.
   const onNodeDoubleClick = useCallback(
     (event: MouseEvent, node: Node<MindMapNodeData>) => {
       // Keep the wrapper's canvas double-click from also adding a node.
       event.stopPropagation();
-      if (node.data.umlClass) actions.openRichEditor(node.id);
+      if (node.data.umlClass) actions.startClassEdit(node.id);
+      else if (hasRichFormatting(node.data.html))
+        actions.openRichEditor(node.id); // don't flatten formatted text
       else actions.startEditing(node.id);
     },
     [actions],

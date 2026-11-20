@@ -112,7 +112,7 @@ export function useMindMapKeyboardShortcuts(
       if (!node) return;
 
       const startEditing = (initialText?: string) => {
-        if (hasRichFormatting(node.html)) {
+        if (!node.umlClass && hasRichFormatting(node.html)) {
           actions.openRichEditor(node.id); // don't flatten formatted text
         } else {
           actions.startEditing(node.id, initialText);
@@ -133,7 +133,12 @@ export function useMindMapKeyboardShortcuts(
           case 'edit':
             return (startEditing(), true);
           case 'richEditor':
-            return (actions.openRichEditor(node.id), true);
+            return (
+              node.umlClass
+                ? actions.startClassEdit(node.id)
+                : actions.openRichEditor(node.id),
+              true
+            );
           case 'toggleCollapse':
             return (actions.toggleCollapsed(node.id), true);
           case 'delete':

@@ -58,6 +58,9 @@ interface Snapshot {
  * history) plus the UI state that depends on them. React Flow nodes are
  * *derived* from this, never stored separately, so the two can't drift apart.
  */
+/** The fields of a class node that can be edited in place. */
+export type ClassField = 'name' | 'stereotype' | 'attributes' | 'operations';
+
 interface StoreState {
   past: Snapshot[];
   root: MindNode;
@@ -76,7 +79,13 @@ interface StoreState {
   linkingFrom: string | null;
   selectedId: string;
   /** Node being edited inline; `initialText` replaces its text when set. */
-  editing: {id: string; initialText?: string} | null;
+  editing: {
+    id: string;
+    initialText?: string;
+    /** Absent for the inline name edit; 'class' edits all of a class's fields. */
+    mode?: 'class';
+    field?: ClassField;
+  } | null;
   /** Node open in the rich-text editor modal. */
   richEditorId: string | null;
   generatingIds: string[];
@@ -106,7 +115,13 @@ type Action =
   | {type: 'UNDO'}
   | {type: 'REDO'}
   | {type: 'SELECT'; id: string}
-  | {type: 'START_EDIT'; id: string; initialText?: string}
+  | {
+      type: 'START_EDIT';
+      id: string;
+      initialText?: string;
+      mode?: 'class';
+      field?: ClassField;
+    }
   | {type: 'STOP_EDIT'}
   | {type: 'OPEN_RICH_EDITOR'; id: string | null}
   | {type: 'SET_GENERATING'; id: string; generating: boolean}
@@ -203,14 +218,29 @@ function reducer(state: StoreState, action: Action): StoreState {
       return {...state, selectedId: action.id, editing: null};
     case 'START_EDIT':
       if (!findNode(state.root, action.id)) return state;
+      if (action.mode === 'class' && !findNode(state.root, action.id)?.umlClass)
+        return state;
       return {
         ...state,
         selectedId: action.id,
-        editing: {id: action.id, initialText: action.initialText},
+        editing: {
+          id: action.id,
+          initialText: action.initialText,
+          mode: action.mode,
+          field: action.field,
+        },
       };
     case 'STOP_EDIT':
       return state.editing ? {...state, editing: null} : state;
     case 'OPEN_RICH_EDITOR':
+      // Classes have no rich editor; they are edited in place.
+      if (action.id && findNode(state.root, action.id)?.umlClass) {
+        return {
+          ...state,
+          selectedId: action.id,
+          editing: {id: action.id, mode: 'class', field: 'name'},
+        };
+      }
       return {...state, richEditorId: action.id, editing: null};
     case 'SET_GENERATING': {
       const without = state.generatingIds.filter((id) => id !== action.id);
@@ -602,6 +632,8 @@ export function useMindMapStore() {
       select: (id: string) => dispatch({type: 'SELECT', id}),
       startEditing: (id: string, initialText?: string) =>
         dispatch({type: 'START_EDIT', id, initialText}),
+      startClassEdit: (id: string, field: ClassField = 'name') =>
+        dispatch({type: 'START_EDIT', id, mode: 'class', field}),
       stopEditing: () => dispatch({type: 'STOP_EDIT'}),
       openRichEditor: (id: string | null) =>
         dispatch({type: 'OPEN_RICH_EDITOR', id}),
