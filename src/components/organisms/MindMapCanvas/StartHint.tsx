@@ -1,7 +1,7 @@
 'use client';
 import {useState} from 'react';
 import {Button, IconButton} from '@mui/material';
-import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import LayersOutlinedIcon from '@mui/icons-material/LayersOutlined';
 import CloseIcon from '@mui/icons-material/Close';
 import NotesOutlinedIcon from '@mui/icons-material/NotesOutlined';
 import {
@@ -36,7 +36,7 @@ export function StartHint() {
         size="small"
         variant="contained"
         disableElevation
-        startIcon={<AutoAwesomeIcon />}
+        startIcon={<LayersOutlinedIcon />}
         disabled={!named || generatingIds.length > 0}
         // Clicking must not take keyboard focus off the map.
         onMouseDown={(event) => event.preventDefault()}

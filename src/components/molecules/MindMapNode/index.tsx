@@ -3,10 +3,10 @@ import {CSSProperties, memo, MouseEvent, ReactNode, useState} from 'react';
 import {Handle, NodeProps, NodeToolbar, Position} from 'reactflow';
 import {CircularProgress, IconButton, Tooltip} from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import AddLinkIcon from '@mui/icons-material/AddLink';
 import CategoryOutlinedIcon from '@mui/icons-material/CategoryOutlined';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import DeviceHubOutlinedIcon from '@mui/icons-material/DeviceHubOutlined';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import LayersOutlinedIcon from '@mui/icons-material/LayersOutlined';
 import LinkOffIcon from '@mui/icons-material/LinkOff';
@@ -105,10 +105,6 @@ function MindMapNodeView({
   const actions = useMindMapActions();
   const [shapeAnchor, setShapeAnchor] = useState<HTMLElement | null>(null);
   const hasChildren = data.childCount > 0;
-  // A leaf with a name is exactly where brainstorming makes sense — and it's
-  // the one node that has no collapse button, so the slot is free.
-  const canSprout =
-    !hasChildren && !!data.html && !data.isEditing && !data.isGenerating;
   const uml = data.umlClass;
   // Classes and containers have their own look; otherwise the shape applies.
   const shape = !uml && !data.container ? data.shape : undefined;
@@ -230,31 +226,6 @@ function MindMapNodeView({
         </button>
       )}
 
-      {/* Generating ideas is the least guessable thing the app does, so it
-          gets an affordance on the node itself and not only in the toolbar
-          above it, which stays hidden while the node is being typed into. */}
-      {canSprout && (
-        <Tooltip
-          title={`Generate ideas with AI (${shortcutLabel('generate')})`}
-          placement="right"
-          disableInteractive
-        >
-          <button
-            type="button"
-            tabIndex={-1}
-            className="mm-sprout nodrag"
-            aria-label="Generate ideas with AI"
-            onMouseDown={keepFocus}
-            onClick={(event) => {
-              event.stopPropagation();
-              actions.generateIdeas(id);
-            }}
-          >
-            <AutoAwesomeIcon sx={{fontSize: 12}} />
-          </button>
-        </Tooltip>
-      )}
-
       <NodeToolbar
         isVisible={selected && !data.isEditing && !dragging}
         position={Position.Top}
@@ -275,7 +246,7 @@ function MindMapNodeView({
             {data.isGenerating ? (
               <CircularProgress size={16} />
             ) : (
-              <AutoAwesomeIcon fontSize="small" />
+              <DeviceHubOutlinedIcon fontSize="small" />
             )}
           </ToolbarButton>
           <ToolbarButton

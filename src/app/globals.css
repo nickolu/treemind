@@ -269,39 +269,6 @@ a {
   color: #fff;
 }
 
-/* Fills the slot the collapse button leaves free on a leaf node. Filled
-   rather than outlined like the neutral collapse chip, because on a leaf
-   this is the action worth noticing. */
-.mm-sprout {
-  position: absolute;
-  top: 50%;
-  right: -11px;
-  transform: translateY(-50%);
-  display: grid;
-  place-items: center;
-  width: 20px;
-  height: 20px;
-  padding: 0;
-  border: 1.5px solid #fff;
-  border-radius: 10px;
-  background: var(--branch);
-  color: #fff;
-  cursor: pointer;
-  opacity: 0;
-  transition:
-    opacity 120ms ease,
-    transform 120ms ease;
-}
-
-.mm-node:hover .mm-sprout,
-.mm-node--selected .mm-sprout {
-  opacity: 1;
-}
-
-.mm-sprout:hover {
-  transform: translateY(-50%) scale(1.15);
-}
-
 .mm-toolbar {
   display: flex;
   gap: 2px;
@@ -328,8 +295,7 @@ a {
 
 @media (prefers-reduced-motion: reduce) {
   .mm-node,
-  .mm-collapse,
-  .mm-sprout {
+  .mm-collapse {
     transition: none;
   }
   .mm-node--generating::after,
