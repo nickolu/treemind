@@ -80,11 +80,13 @@ const keepFocus = (event: MouseEvent) => event.preventDefault();
 function ToolbarButton({
   title,
   onClick,
+  onPointerDown,
   children,
   disabled,
 }: {
   title: string;
   onClick: (event: MouseEvent<HTMLButtonElement>) => void;
+  onPointerDown?: () => void;
   children: ReactNode;
   disabled?: boolean;
 }) {
@@ -96,6 +98,7 @@ function ToolbarButton({
           tabIndex={-1}
           disabled={disabled}
           onMouseDown={keepFocus}
+          onPointerDown={onPointerDown}
           onClick={(event) => {
             event.stopPropagation();
             onClick(event);
@@ -119,6 +122,8 @@ function MindMapNodeView({
   // Text typed before picking a shape, carried over if the editor remounts.
   const draftRef = useRef('');
   const blurGuard = useRef(false);
+  // Whether the shape button's click arrived after its pointerdown.
+  const shapeClicked = useRef(false);
   const [draft, setDraft] = useState<string>();
   if (!data.isEditing && draft !== undefined) {
     // Editing ended: don't leak the draft into the next edit session.
@@ -247,7 +252,7 @@ function MindMapNodeView({
         <button
           type="button"
           tabIndex={-1}
-          className={`mm-collapse nodrag ${data.collapsed ? 'mm-collapse--collapsed' : ''}`}
+          className={`mm-collapse nodrag nopan ${data.collapsed ? 'mm-collapse--collapsed' : ''}`}
           aria-label={data.collapsed ? 'Expand branch' : 'Collapse branch'}
           title={`${data.collapsed ? 'Expand' : 'Collapse'} (${shortcutLabel('toggleCollapse')})`}
           onMouseDown={keepFocus}
@@ -267,7 +272,7 @@ function MindMapNodeView({
         position={Position.Top}
         offset={8}
       >
-        <div className="mm-toolbar nodrag">
+        <div className="mm-toolbar nodrag nopan">
           <ToolbarButton
             title={`Add child (${shortcutLabel('addChild')})`}
             onClick={() => actions.addChild(id)}
@@ -345,12 +350,29 @@ function MindMapNodeView({
         position={Position.Top}
         offset={8}
       >
-        <div className="mm-toolbar nodrag">
+        <div className="mm-toolbar nodrag nopan">
           <ToolbarButton
             title="Choose a shape…"
+            onPointerDown={() => {
+              // Backstop in case the editor still blurs on press (the click
+              // comes too late to guard it). If no click follows, e.g. the
+              // pointer is released elsewhere, drop the guard again so a later
+              // click-away still commits or discards the node.
+              blurGuard.current = true;
+              shapeClicked.current = false;
+              window.addEventListener(
+                'pointerup',
+                () =>
+                  setTimeout(() => {
+                    if (!shapeClicked.current) blurGuard.current = false;
+                  }, 0),
+                {once: true},
+              );
+            }}
             onClick={(event) => {
               // The popover takes focus; don't let that discard the new node.
               blurGuard.current = true;
+              shapeClicked.current = true;
               setShapeAnchor(event.currentTarget);
             }}
           >
