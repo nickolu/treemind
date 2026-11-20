@@ -250,7 +250,7 @@ function MindMapNodeView({
             )}
           </ToolbarButton>
           <ToolbarButton
-            title={`Add detail with AI (${shortcutLabel('addDetail')})`}
+            title={`Diagram this${hasChildren ? ' further' : ''} with AI (${shortcutLabel('addDetail')})`}
             onClick={() => actions.expandNode(id)}
             disabled={data.isGenerating}
           >

@@ -20,7 +20,7 @@ function leaves(node: MindNode, result: string[] = []): string[] {
 }
 
 /**
- * "Add detail": asks the AI for one more level of detail on a node, or on
+ * "Diagram this": asks the AI for one more level of detail on a node, or on
  * every leaf of the map, together with the link changes that implies. The
  * result is applied as a single undoable step.
  */
@@ -91,7 +91,7 @@ export function useExpandDiagram(
         actions.applyGeneration(generation);
       } catch (error) {
         notify(
-          `Couldn't add detail: ${error instanceof Error ? error.message : 'unknown error'}`,
+          `Couldn't diagram this: ${error instanceof Error ? error.message : 'unknown error'}`,
           'error',
         );
       } finally {
