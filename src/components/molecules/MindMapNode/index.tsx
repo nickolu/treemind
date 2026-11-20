@@ -19,6 +19,7 @@ import LayersOutlinedIcon from '@mui/icons-material/LayersOutlined';
 import LinkOffIcon from '@mui/icons-material/LinkOff';
 import TextFieldsIcon from '@mui/icons-material/TextFields';
 import {NodeOrigin, UmlClass} from '@/domain/MindMap/tree';
+import {ClassField} from '@/components/organisms/MindMapStore/useMindMapStore';
 import {NodeShape} from '@/domain/MindMap/shapes';
 import {
   ComponentBadge,
@@ -29,6 +30,7 @@ import {
 } from '@/components/atoms/NodeShape';
 import {ShapePicker} from '@/components/molecules/ShapePicker';
 import {NodeHtmlRenderer} from '@/components/atoms/NodeHtmlRenderer';
+import {ClassInlineEditor} from '@/components/molecules/ClassInlineEditor';
 import {InlineNodeEditor} from '@/components/atoms/InlineNodeEditor';
 import {useMindMapActions} from '@/components/organisms/MindMapStore/MindMapStoreContext';
 import {shortcutLabel} from '@/components/molecules/MindMapKeyboardEvents/shortcuts';
@@ -41,6 +43,9 @@ export interface MindMapNodeData {
   childCount: number;
   collapsed: boolean;
   isEditing: boolean;
+  /** A class being edited in place (all its fields), not just its name. */
+  isClassEditing: boolean;
+  editField?: ClassField;
   editInitialText?: string;
   isGenerating: boolean;
   /** Just added by the AI; highlighted briefly. */
@@ -193,6 +198,14 @@ function MindMapNodeView({
           {shape === 'component' && <ComponentBadge />}
           <div className="mm-shape__label">{title}</div>
         </>
+      ) : uml && data.isClassEditing ? (
+        <ClassInlineEditor
+          nodeId={id}
+          html={data.html}
+          umlClass={uml}
+          field={data.editField}
+          italic={ITALIC_STEREOTYPE.test(uml.stereotype)}
+        />
       ) : uml ? (
         <div className="mm-class">
           <div className="mm-class__header">
@@ -220,7 +233,7 @@ function MindMapNodeView({
         isConnectable={false}
       />
       {/* Dragging from this dot to another node creates a link. */}
-      {!data.isEditing && (
+      {!data.isEditing && !data.isClassEditing && (
         <Handle
           id="link"
           type="source"
@@ -248,7 +261,9 @@ function MindMapNodeView({
       )}
 
       <NodeToolbar
-        isVisible={selected && !data.isEditing && !dragging}
+        isVisible={
+          selected && !data.isEditing && !data.isClassEditing && !dragging
+        }
         position={Position.Top}
         offset={8}
       >
@@ -297,7 +312,9 @@ function MindMapNodeView({
                 ? `Edit class (${shortcutLabel('richEditor')})`
                 : `Formatted editor (${shortcutLabel('richEditor')})`
             }
-            onClick={() => actions.openRichEditor(id)}
+            onClick={() =>
+              uml ? actions.startClassEdit(id) : actions.openRichEditor(id)
+            }
           >
             {uml ? (
               <EditOutlinedIcon fontSize="small" />

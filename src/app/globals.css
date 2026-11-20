@@ -814,3 +814,50 @@ a {
 .mm-node--container.mm-node--drop-target {
   background: color-mix(in srgb, var(--accent) 8%, transparent);
 }
+
+/* Class box edited in place (reuses the .mm-class look). */
+.mm-class--editing {
+  cursor: text;
+}
+
+.mm-class__field {
+  outline: none;
+  border-radius: 3px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  cursor: text;
+}
+
+.mm-class__field:focus {
+  outline: 1px dashed var(--branch);
+  outline-offset: 2px;
+}
+
+.mm-class__field:empty::before {
+  content: attr(data-placeholder);
+  color: var(--muted);
+  font-weight: 400;
+  font-style: italic;
+  pointer-events: none;
+}
+
+
+.mm-class--editing .mm-class__stereotype {
+  display: flex;
+  align-items: baseline;
+}
+
+.mm-class__field--inline {
+  min-width: 1ch;
+  flex: 0 1 auto;
+}
+
+.mm-class__stereotype--idle .mm-class__quote {
+  visibility: hidden;
+}
+
+.mm-class__compartment.mm-class__field--members,
+.mm-class__compartment.mm-class__field--members:empty {
+  min-height: 28px;
+  padding: 4px 12px;
+}
