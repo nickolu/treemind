@@ -4,6 +4,17 @@ import {LinkKind, MindLink} from '@/domain/MindMap/links';
 import {Generation} from '@/domain/MindMap/generation';
 import {htmlToText} from '@/domain/MindMap/html';
 import {isNodeShape} from '@/domain/MindMap/shapes';
+import type {LayoutKind} from '@/domain/MindMap/document';
+
+/** Layouts the AI may answer with. 'freeform' is deliberately absent. */
+export const AI_LAYOUT_CHOICES = [
+  'keep',
+  'mindmap',
+  'tree',
+  'radial',
+  'diagram',
+] as const;
+export type AiLayoutChoice = (typeof AI_LAYOUT_CHOICES)[number];
 
 /**
  * Contract between the client and /api/expandDiagram. The map is sent as
@@ -19,9 +30,13 @@ export interface ExpandDiagramRequest {
   /** Only use facts from `context` (ignored when there is none). */
   strict: boolean;
   model: string;
+  /** The layout the map is currently shown in. */
+  layout: LayoutKind;
 }
 
 export interface ExpandDiagramResponse {
+  /** Suggested layout; the client treats anything unexpected as 'keep'. */
+  layout: AiLayoutChoice;
   nodes: {
     ref: string;
     parent: string;

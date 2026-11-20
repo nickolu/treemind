@@ -101,7 +101,8 @@ export function AppToolbar({
   panelOpen: boolean;
   onTogglePanel: () => void;
 }) {
-  const {root, links, context, layout, canUndo, canRedo} = useMindMapState();
+  const {root, links, context, layout, layoutSetByUser, canUndo, canRedo} =
+    useMindMapState();
   const actions = useMindMapActions();
   const reactFlow = useReactFlow();
   const [shortcutsAnchor, setShortcutsAnchor] = useState<HTMLElement | null>(
@@ -141,7 +142,7 @@ export function AppToolbar({
 
   const handleSave = (format: ExportFormat) => {
     setSaveAnchor(null);
-    saveMindMapToFile({root, links, context, layout}, format);
+    saveMindMapToFile({root, links, context, layout, layoutSetByUser}, format);
   };
 
   return (

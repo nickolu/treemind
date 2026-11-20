@@ -1,6 +1,7 @@
 'use client';
 import {RefObject, useCallback, useRef} from 'react';
 import {MindNode, findNode} from '@/domain/MindMap/tree';
+import {LAYOUTS, pickAiLayout} from '@/domain/MindMap/document';
 import {
   ExpandDiagramRequest,
   ExpandDiagramResponse,
@@ -37,7 +38,7 @@ export function useExpandDiagram(
       const state = stateRef.current;
       const settings = settingsRef.current;
       if (!state || !settings || busy.current) return;
-      const {root, links, context} = state;
+      const {root, links, context, layout} = state;
 
       const targetIds =
         mode === 'node' ? (nodeId ? [nodeId] : []) : leaves(root);
@@ -54,6 +55,7 @@ export function useExpandDiagram(
           context,
           strict: settings.strict,
           model: settings.model,
+          layout,
         };
         const res = await fetch('/api/expandDiagram', {
           method: 'POST',
@@ -88,7 +90,12 @@ export function useExpandDiagram(
           );
           return;
         }
-        actions.applyGeneration(generation);
+        const latest = stateRef.current;
+        const next = latest
+          ? pickAiLayout(data.layout, latest.layout, latest.layoutSetByUser)
+          : null;
+        actions.applyGeneration(generation, data.layout);
+        if (next) notify(`Switched to ${LAYOUTS[next].name} layout`, 'info');
       } catch (error) {
         notify(
           `Couldn't diagram this: ${error instanceof Error ? error.message : 'unknown error'}`,

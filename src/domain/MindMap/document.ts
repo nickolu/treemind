@@ -20,7 +20,7 @@ export const LAYOUTS: Record<LayoutKind, {name: string; description: string}> =
 
 export const LAYOUT_IDS = Object.keys(LAYOUTS) as LayoutKind[];
 
-const isLayoutKind = (value: unknown): value is LayoutKind =>
+export const isLayoutKind = (value: unknown): value is LayoutKind =>
   typeof value === 'string' && value in LAYOUTS;
 
 /** Layouts that draw parents as containers around their children. */
@@ -36,6 +36,8 @@ export interface MindMapDocument {
   links: MindLink[];
   context: string;
   layout: LayoutKind;
+  /** True once the user picked a layout by hand; the AI then never changes it. */
+  layoutSetByUser?: boolean;
 }
 
 interface MindMapDocumentJson {
@@ -44,10 +46,32 @@ interface MindMapDocumentJson {
   links: MindLink[];
   context?: string;
   layout?: LayoutKind;
+  layoutSetByUser?: boolean;
+}
+
+/**
+ * Decides whether an AI layout suggestion should be applied. Returns the new
+ * layout, or null to keep the current one. Anything unknown, 'keep' or
+ * 'freeform' is ignored, and a freeform or user-chosen layout is never changed.
+ */
+export function pickAiLayout(
+  suggestion: unknown,
+  current: LayoutKind,
+  setByUser: boolean,
+): LayoutKind | null {
+  if (setByUser || current === 'freeform') return null;
+  if (!isLayoutKind(suggestion) || suggestion === 'freeform') return null;
+  return suggestion === current ? null : suggestion;
 }
 
 export function createDocument(root: MindNode): MindMapDocument {
-  return {root, links: [], context: '', layout: 'mindmap'};
+  return {
+    root,
+    links: [],
+    context: '',
+    layout: 'mindmap',
+    layoutSetByUser: false,
+  };
 }
 
 export function serializeDocument(doc: MindMapDocument): MindMapDocumentJson {
@@ -57,6 +81,10 @@ export function serializeDocument(doc: MindMapDocument): MindMapDocumentJson {
     links: doc.links,
     ...(doc.context ? {context: doc.context} : {}),
     ...(doc.layout !== 'mindmap' ? {layout: doc.layout} : {}),
+    // Written explicitly for non-default layouts: absent means "legacy, set by user".
+    ...(doc.layoutSetByUser || doc.layout !== 'mindmap'
+      ? {layoutSetByUser: !!doc.layoutSetByUser}
+      : {}),
   };
 }
 
@@ -68,11 +96,18 @@ export function normalizeDocument(json: unknown): MindMapDocument {
   const value = json as Partial<MindMapDocumentJson> | null;
   if (value && typeof value === 'object' && value.root) {
     const root = normalizeTree(value.root);
+    const layout = isLayoutKind(value.layout) ? value.layout : 'mindmap';
+    // Before the flag existed only the user could pick a non-default layout.
+    const layoutSetByUser =
+      typeof value.layoutSetByUser === 'boolean'
+        ? value.layoutSetByUser
+        : layout !== 'mindmap';
     return {
       root,
       links: normalizeLinks(value.links, root),
       context: typeof value.context === 'string' ? value.context : '',
-      layout: isLayoutKind(value.layout) ? value.layout : 'mindmap',
+      layout,
+      layoutSetByUser,
     };
   }
   return createDocument(normalizeTree(json));

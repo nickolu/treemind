@@ -30,8 +30,10 @@ import {
   LayoutKind,
   MindMapDocument,
   createDocument,
+  pickAiLayout,
 } from '@/domain/MindMap/document';
 import {Generation, applyGeneration} from '@/domain/MindMap/generation';
+import type {AiLayoutChoice} from '@/app/utils/diagramAi';
 import {
   loadMindMapFromLocalStorage,
   saveMindMapToLocalStorage,
@@ -39,10 +41,16 @@ import {
 
 const HISTORY_LIMIT = 100;
 
-/** What undo/redo restores: the tree and the links between its nodes. */
+/**
+ * What undo/redo restores: the tree and the links between its nodes.
+ * `layout` is present only on entries whose step also changed the layout (an
+ * AI step), and holds the layout to restore. Entries without it never touch
+ * the layout.
+ */
 interface Snapshot {
   root: MindNode;
   links: MindLink[];
+  layout?: LayoutKind;
 }
 
 /**
@@ -57,8 +65,13 @@ interface StoreState {
   future: Snapshot[];
   /** Source text for AI generation. Saved with the map, but not undoable. */
   context: string;
-  /** How the map is arranged. Saved with the map, but not undoable. */
+  /**
+   * How the map is arranged. Saved with the map. Picking a layout by hand is
+   * not undoable; an AI layout change is undone together with its expansion.
+   */
   layout: LayoutKind;
+  /** True once the user picked a layout by hand; the AI then leaves it alone. */
+  layoutSetByUser: boolean;
   /** Node a link is being drawn from (link mode), if any. */
   linkingFrom: string | null;
   selectedId: string;
@@ -78,6 +91,8 @@ interface StoreState {
 interface Commit {
   root: MindNode;
   links?: MindLink[];
+  /** New layout, applied in the same history entry as the edit. */
+  layout?: LayoutKind;
   selectedId?: string;
   editId?: string;
 }
@@ -117,15 +132,20 @@ function reducer(state: StoreState, action: Action): StoreState {
       if (!commit) return state;
       // Links to deleted nodes go with them.
       const links = pruneLinks(commit.links ?? state.links, commit.root);
-      const changed = commit.root !== state.root || links !== state.links;
+      const layoutChanged = !!commit.layout && commit.layout !== state.layout;
+      const changed =
+        commit.root !== state.root || links !== state.links || layoutChanged;
       if (!changed && !commit.selectedId) return state;
       return reconcile({
         ...state,
         past: changed
-          ? [...state.past, snapshot(state)].slice(-HISTORY_LIMIT)
+          ? [...state.past, snapshot(state, layoutChanged)].slice(
+              -HISTORY_LIMIT,
+            )
           : state.past,
         root: commit.root,
         links,
+        layout: layoutChanged && commit.layout ? commit.layout : state.layout,
         future: changed ? [] : state.future,
         selectedId: commit.selectedId ?? state.selectedId,
         editing: commit.editId ? {id: commit.editId} : state.editing,
@@ -136,7 +156,14 @@ function reducer(state: StoreState, action: Action): StoreState {
     case 'SET_CONTEXT':
       return {...state, context: action.context};
     case 'SET_LAYOUT':
-      return {...state, layout: action.layout};
+      // A manual pick always wins: drop layout from history so undo can't roll it back.
+      return {
+        ...state,
+        layout: action.layout,
+        layoutSetByUser: true,
+        past: state.past.map(stripLayout),
+        future: state.future.map(stripLayout),
+      };
     case 'SET_LINKING':
       if (action.id && !findNode(state.root, action.id)) return state;
       return {
@@ -151,7 +178,10 @@ function reducer(state: StoreState, action: Action): StoreState {
         ...state,
         past: state.past.slice(0, -1),
         ...previous,
-        future: [snapshot(state), ...state.future],
+        future: [
+          snapshot(state, previous.layout !== undefined),
+          ...state.future,
+        ],
         editing: null,
       });
     }
@@ -160,7 +190,7 @@ function reducer(state: StoreState, action: Action): StoreState {
       if (!next) return state;
       return reconcile({
         ...state,
-        past: [...state.past, snapshot(state)],
+        past: [...state.past, snapshot(state, next.layout !== undefined)],
         ...next,
         future,
         editing: null,
@@ -195,7 +225,13 @@ function reducer(state: StoreState, action: Action): StoreState {
   }
 }
 
-const snapshot = ({root, links}: StoreState): Snapshot => ({root, links});
+const snapshot = (state: StoreState, withLayout = false): Snapshot => ({
+  root: state.root,
+  links: state.links,
+  ...(withLayout ? {layout: state.layout} : {}),
+});
+
+const stripLayout = ({root, links}: Snapshot): Snapshot => ({root, links});
 
 function fromDocument(doc: MindMapDocument): StoreState {
   return {
@@ -205,6 +241,7 @@ function fromDocument(doc: MindMapDocument): StoreState {
     future: [],
     context: doc.context,
     layout: doc.layout,
+    layoutSetByUser: doc.layoutSetByUser ?? false,
     linkingFrom: null,
     selectedId: doc.root.id,
     editing: null,
@@ -244,16 +281,23 @@ function withParent(root: MindNode, id: string) {
 
 export function useMindMapStore() {
   const [state, dispatch] = useReducer(reducer, undefined, init);
-  const {root, links, context, layout} = state;
+  const {root, links, context, layout, layoutSetByUser} = state;
 
   // Persist (debounced) whenever the map changes.
   useEffect(() => {
     const timeout = setTimeout(
-      () => saveMindMapToLocalStorage({root, links, context, layout}),
+      () =>
+        saveMindMapToLocalStorage({
+          root,
+          links,
+          context,
+          layout,
+          layoutSetByUser,
+        }),
       300,
     );
     return () => clearTimeout(timeout);
-  }, [root, links, context, layout]);
+  }, [root, links, context, layout, layoutSetByUser]);
 
   // Every action is expressed against the *current* reducer state, so these
   // callbacks are stable and never act on a stale tree.
@@ -534,8 +578,19 @@ export function useMindMapStore() {
         ),
 
       /** Applies AI output as a single undoable step. */
-      applyGeneration: (generation: Generation) =>
-        apply(({root, links}) => applyGeneration(root, links, generation)),
+      applyGeneration: (
+        generation: Generation,
+        layoutSuggestion?: AiLayoutChoice,
+      ) =>
+        apply((state) => {
+          const base = applyGeneration(state.root, state.links, generation);
+          const layout = pickAiLayout(
+            layoutSuggestion,
+            state.layout,
+            state.layoutSetByUser,
+          );
+          return base && layout ? {...base, layout} : base;
+        }),
 
       setContext: (context: string) => dispatch({type: 'SET_CONTEXT', context}),
       setLayout: (layout: LayoutKind) => dispatch({type: 'SET_LAYOUT', layout}),
@@ -563,6 +618,7 @@ export function useMindMapStore() {
       links,
       context,
       layout,
+      layoutSetByUser,
       linkingFrom: state.linkingFrom,
       selectedId: state.selectedId,
       editing: state.editing,
