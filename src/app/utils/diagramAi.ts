@@ -12,7 +12,7 @@ import {isNodeShape} from '@/domain/MindMap/shapes';
  */
 export interface ExpandDiagramRequest {
   map: string;
-  /** Refs of the nodes to add detail to. */
+  /** Refs of the nodes to diagram. */
   targets: string[];
   mode: 'node' | 'all';
   context: string;

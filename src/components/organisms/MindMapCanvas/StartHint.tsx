@@ -29,7 +29,7 @@ export function StartHint() {
     <div className="mm-start-hint" role="note">
       <span className="mm-start-hint__text">
         {named
-          ? 'Add detail with AI, or build the map from your own notes.'
+          ? 'Diagram it with AI, or build the map from your own notes.'
           : 'Type to name your central topic — then let AI take it from there.'}
       </span>
       <Button
@@ -42,7 +42,7 @@ export function StartHint() {
         onMouseDown={(event) => event.preventDefault()}
         onClick={() => actions.expandNode(root.id)}
       >
-        Add detail
+        Diagram this
       </Button>
       <Button
         size="small"

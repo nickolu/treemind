@@ -244,7 +244,7 @@ function parseRequest(body: unknown): ExpandDiagramRequest | string {
     : [];
   if (targets.length === 0) return 'Nothing to expand.';
   if (targets.length > MAX_TARGETS) {
-    return `Too many branches to expand at once (${targets.length}). Add detail to individual branches instead.`;
+    return `Too many branches to expand at once (${targets.length}). Diagram individual branches instead.`;
   }
   const context = typeof value.context === 'string' ? value.context.trim() : '';
   if (value.map.length > MAX_MAP_LENGTH) {

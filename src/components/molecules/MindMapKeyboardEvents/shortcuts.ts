@@ -64,7 +64,7 @@ export const SHORTCUTS: Shortcut[] = [
   {
     id: 'addDetail',
     keys: [isMac ? '⌘ ⇧ Enter' : 'Ctrl Shift Enter'],
-    description: 'Add detail with AI (and update links)',
+    description: 'Diagram this with AI (and update links)',
     matches: (e) => e.key === 'Enter' && isModKey(e) && !e.altKey && e.shiftKey,
   },
   {

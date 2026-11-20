@@ -127,7 +127,7 @@ export function ModelPanel({
 
       <Stack spacing={2} sx={{p: 2, overflowY: 'auto', flex: 1}}>
         <Typography variant="body2" color="text.secondary">
-          Start from the central topic, or model by hand, then let AI add detail
+          Start from the central topic, or model by hand, then let AI diagram it
           one level at a time. Links are updated as parts are broken down.
         </Typography>
 
@@ -215,7 +215,7 @@ export function ModelPanel({
             disabled={busy}
             onClick={actions.expandAll}
           >
-            {isEmpty ? 'Generate diagram' : 'Add detail everywhere'}
+            {isEmpty ? 'Generate diagram' : 'Diagram everything'}
           </Button>
           <Tooltip
             title={`Or press ${shortcutLabel('addDetail')} on a node`}
@@ -238,7 +238,8 @@ export function ModelPanel({
                     whiteSpace: 'nowrap',
                   }}
                 >
-                  Add detail to “{selectedName}”
+                  Diagram “{selectedName}”
+                  {selected && selected.children.length > 0 ? ' further' : ''}
                 </Box>
               </Button>
             </span>
