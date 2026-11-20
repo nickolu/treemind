@@ -1,5 +1,5 @@
 'use client';
-import {KeyboardEvent, useLayoutEffect, useRef} from 'react';
+import {KeyboardEvent, MutableRefObject, useLayoutEffect, useRef} from 'react';
 import {htmlToText, textToHtml} from '@/domain/MindMap/html';
 import {useMindMapActions} from '@/components/organisms/MindMapStore/MindMapStoreContext';
 
@@ -8,6 +8,13 @@ interface InlineNodeEditorProps {
   html: string;
   /** When set (typing on a selected node), replaces the text instead of selecting it. */
   initialText?: string;
+  /**
+   * While true, losing focus doesn't save or discard (e.g. a popover opened
+   * from the node). Cleared when the editor regains focus.
+   */
+  blurGuard?: MutableRefObject<boolean>;
+  /** Kept in sync with the text, so a remounted editor can pick it up. */
+  draftRef?: MutableRefObject<string>;
 }
 
 /**
@@ -22,6 +29,8 @@ export function InlineNodeEditor({
   nodeId,
   html,
   initialText,
+  blurGuard,
+  draftRef,
 }: InlineNodeEditorProps) {
   const actions = useMindMapActions();
   const ref = useRef<HTMLDivElement>(null);
@@ -31,6 +40,7 @@ export function InlineNodeEditor({
     const el = ref.current;
     if (!el) return;
     el.textContent = initialText ?? htmlToText(html);
+    if (draftRef) draftRef.current = el.textContent;
     let frame = 0;
     let attempts = 0;
     const focus = () => {
@@ -95,7 +105,15 @@ export function InlineNodeEditor({
       aria-multiline
       spellCheck
       onKeyDown={onKeyDown}
-      onBlur={() => finish(true)}
+      onInput={(event) => {
+        if (draftRef) draftRef.current = event.currentTarget.innerText;
+      }}
+      onFocus={() => {
+        if (blurGuard) blurGuard.current = false;
+      }}
+      onBlur={() => {
+        if (!blurGuard?.current) finish(true);
+      }}
       // Let the caret be placed with the mouse without starting a drag/select.
       onMouseDown={(event) => event.stopPropagation()}
       onDoubleClick={(event) => event.stopPropagation()}
