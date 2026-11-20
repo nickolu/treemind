@@ -16,6 +16,7 @@ import {
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import LayersOutlinedIcon from '@mui/icons-material/LayersOutlined';
+import SchemaOutlinedIcon from '@mui/icons-material/SchemaOutlined';
 import AutoAwesomeMotionOutlinedIcon from '@mui/icons-material/AutoAwesomeMotionOutlined';
 import {findNode} from '@/domain/MindMap/tree';
 import {htmlToText} from '@/domain/MindMap/html';
@@ -217,6 +218,23 @@ export function ModelPanel({
           >
             {isEmpty ? 'Generate diagram' : 'Diagram everything'}
           </Button>
+          <Tooltip
+            title="Let the AI choose shapes, classes, link types and groups for the whole map. One undo reverts it."
+            placement="bottom"
+          >
+            <span>
+              <Button
+                fullWidth
+                variant="outlined"
+                startIcon={<SchemaOutlinedIcon />}
+                disabled={busy || isEmpty}
+                onClick={actions.designDiagram}
+                sx={{justifyContent: 'flex-start'}}
+              >
+                Design as diagram
+              </Button>
+            </span>
+          </Tooltip>
           <Tooltip
             title={`Or press ${shortcutLabel('addDetail')} on a node`}
             placement="bottom"

@@ -33,6 +33,7 @@ import {
   pickAiLayout,
 } from '@/domain/MindMap/document';
 import {Generation, applyGeneration} from '@/domain/MindMap/generation';
+import {DesignGeneration, applyDesign} from '@/domain/MindMap/design';
 import type {AiLayoutChoice} from '@/app/utils/diagramAi';
 import {
   loadMindMapFromLocalStorage,
@@ -632,6 +633,21 @@ export function useMindMapStore() {
       ) =>
         apply((state) => {
           const base = applyGeneration(state.root, state.links, generation);
+          const layout = pickAiLayout(
+            layoutSuggestion,
+            state.layout,
+            state.layoutSetByUser,
+          );
+          return base && layout ? {...base, layout} : base;
+        }),
+
+      /** Applies an AI redesign (and layout) as a single undoable step. */
+      applyDesign: (
+        design: DesignGeneration,
+        layoutSuggestion?: AiLayoutChoice,
+      ) =>
+        apply((state) => {
+          const base = applyDesign(state.root, state.links, design);
           const layout = pickAiLayout(
             layoutSuggestion,
             state.layout,
